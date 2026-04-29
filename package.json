@@ -1,0 +1,71 @@
+{
+  "name": "@msbel/openclaw-thalamus",
+  "version": "0.1.0",
+  "description": "Phase 1 prototype of a native vector routing layer for OpenClaw agents.",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./adapter": {
+      "types": "./dist/adapter.d.ts",
+      "import": "./dist/adapter.js"
+    },
+    "./memory": {
+      "types": "./dist/memory.d.ts",
+      "import": "./dist/memory.js"
+    },
+    "./packet": {
+      "types": "./dist/packet.d.ts",
+      "import": "./dist/packet.js"
+    },
+    "./plugin": {
+      "types": "./dist/plugin.d.ts",
+      "import": "./dist/plugin.js"
+    },
+    "./router": {
+      "types": "./dist/router.d.ts",
+      "import": "./dist/router.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint . && prettier --check .",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0",
+    "ulid": "^3.0.2"
+  },
+  "peerDependencies": {
+    "lancedb": ">=0.0.1",
+    "openclaw": ">=2026.4.26"
+  },
+  "peerDependenciesMeta": {
+    "lancedb": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^24.10.1",
+    "eslint": "^9.39.1",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.47.0",
+    "vitest": "^4.0.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
