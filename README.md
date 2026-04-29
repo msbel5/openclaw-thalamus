@@ -1,50 +1,93 @@
 # openclaw-thalamus
 
-> v1 reference implementation in progress. See PRD for spec.
+## What It Is
 
-Phase 1 software simulation of a native vector routing layer for OpenClaw
-agents. Removes text from the inter-module bus when the consumer is
-another agent, in favor of modality-preserving vector packets.
-
-This is the third plugin in a series:
-
-- [openclaw-aegis-signer](https://github.com/msbel5/openclaw-aegis-signer) — Ed25519-signed tool-call audit (live)
-- [openclaw-sga-mcts-atoms](https://github.com/msbel5/openclaw-sga-mcts-atoms) — Plan-time atom retrieval (live)
-- **openclaw-thalamus** — Native vector routing (this repo, in progress)
-
-## Status
-
-| Component | Status |
-|-----------|--------|
-| PRD | published, see [THALAMUS_PRD.md](./THALAMUS_PRD.md) |
-| arXiv preprint | drafted, see https://arxiv.org/abs/26XX.YYYYY (TBD) |
-| msbel.com long-form | published, see https://msbel.com/writing/thalamus-layer |
-| Code (Phase 1) | implementation pending |
-| npm package | reserved as @msbel/openclaw-thalamus |
-| Smoke tests | defined in PRD, not yet executed |
-
-## Roadmap
-
-- **Phase 1** (current): software simulation, single-process, deployable on Raspberry Pi 5.
-- **Phase 2**: distributed multi-process. Tensor passing via shared memory or RDMA.
-- **Phase 3**: hardware thalamus. FPGA or NPU as routing accelerator.
+`openclaw-thalamus` is a Phase 1, position-paper-grade prototype of a native
+vector routing layer for OpenClaw agents. It makes the architecture concrete
+with one packet schema, stub modality adapters, a priority router, and tiered
+memory, but it is not yet a measured benchmark or a production multimodal
+runtime.
 
 ## Why
 
-Multi-agent LLM systems serialize through text at every hop. Each
-serialization is lossy. The cost compounds. We propose routing
-modality-preserving vectors directly between specialist modules,
-through a software router we call the thalamus, with a layered
-hippocampal memory and an idle replay loop modeled on the default
-mode network.
+The text bus is lossy when the consumer is another model. A vision encoder can
+produce a dense vector with texture, shape, and material cues, only for the
+system to collapse it into a caption, re-embed the caption, and hand the weaker
+signal to a planner or critic. The thalamus layer keeps vectors on the
+inter-module bus and preserves raw embeddings in memory so text is reserved for
+the user-facing boundary.
 
-For the long-form argument see the [arXiv preprint](https://arxiv.org/abs/26XX.YYYYY)
-and the [msbel.com post](https://msbel.com/writing/thalamus-layer).
+## Architecture
 
-## Author
+```text
+                          user input
+                              |
+                              v
+   +---------------------------------------------------------+
+   |             specialist encoders                         |
+   |   (vision, audio, text, ...)                            |
+   +-----------------------------+---------------------------+
+                                 |  raw embeddings
+                                 v
+   +---------------------------------------------------------+
+   |             modality adapters                           |
+   |   frozen random projections in Phase 1                  |
+   +-----------------------------+---------------------------+
+                                 |  shared workspace vectors
+                                 v
+   +---------------------------------------------------------+
+   |             thalamus router                             |
+   |   priority buckets, FIFO, hop limits, audit log         |
+   +-----+-----------------+-----------------+---------------+
+         |                 |                 |
+         v                 v                 v
+   +-----+----+       +----+-----+      +----+-----+
+   | reasoning|       | critic   |      | planner  |
+   |   core   |       |   core   |      |   core   |
+   +----+-----+       +----+-----+      +----+-----+
+        |                  |                  |
+        +-------+----------+--------+---------+
+                |                   |
+                v                   v
+   +---------------------------------------------------------+
+   |             hippocampal memory                          |
+   |   hot LRU        |  vector index  |  episodic SQLite    |
+   |   raw embedding cache stays attached to each hit        |
+   +---------------------------------------------------------+
+```
 
-Muhammet Sıddık Bel ([@msbel5](https://github.com/msbel5)) — Independent.
-Alcyone personal AI infrastructure project.
+## Phase 1 Status
+
+This repository now contains the software prototype for the narrow Phase 1
+claim: vectors can be encoded by stubs, projected into a shared workspace,
+routed by priority, stored with summaries, and retrieved by both text and
+vector. There is no measured implementation result yet: no latency baseline,
+no fidelity comparison against a text-bus pipeline, and no trained adapter
+alignment.
+
+## Quick Start
+
+```bash
+npm install
+npm test
+npm run build
+```
+
+## Roadmap To Phase 2
+
+- Replace stub encoders with real local adapters for vision, text, and audio.
+- Train paired-data contrastive adapters for image-caption and
+  audio-transcript alignment.
+- Add latency and fidelity benchmarks against a text-bus baseline.
+- Move toward multi-process tensor transport with JSON metadata and binary
+  payloads out of band.
+
+## Companion Packages
+
+- [@msbel/openclaw-aegis-signer](https://github.com/msbel5/openclaw-aegis-signer)
+  provides Ed25519-signed tool-call audit.
+- [@msbel/openclaw-sga-mcts-atoms](https://github.com/msbel5/openclaw-sga-mcts-atoms)
+  provides LanceDB-backed plan-time atom retrieval.
 
 ## License
 
