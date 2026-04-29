@@ -1,0 +1,293 @@
+# PRD: openclaw-thalamus (Phase 1, software simulation)
+
+**Version:** 1.0
+**Date:** 2026-04-29
+**Owner:** Builder (assigned by Captain on cron trigger when ready)
+**Reviewer:** Inspector (gpt-5.4 cross-model audit)
+**Source thesis:** "The Thalamus Layer", msbel.com (2026-04-29)
+**Related papers:** Perceiver IO (arXiv:2107.14795), V-JEPA (OpenReview WFYbBOEOtv), LatentMAS (arXiv:2511.20639), HippoRAG (arXiv:2405.14831), Theater of Mind (arXiv:2604.08206)
+**Target repo:** github.com/msbel5/openclaw-thalamus (new, public, MIT)
+**Companion repos:** openclaw-aegis-signer, openclaw-sga-mcts-atoms
+
+---
+
+## 1. Problem statement
+
+Multi-agent OpenClaw deployments today serialize every inter-agent
+message through text. Vision encoder produces a 1024-dim vector,
+captions it to English, hands the caption to the planning model. The
+planner re-embeds, plans, writes a sentence to the critic. The critic
+re-embeds, decides, writes a verdict. By the time the loop closes,
+the same idea has gone through five or six encode-decode round trips.
+
+Each round trip is lossy. Each costs tokens. The substrate is wrong.
+
+`openclaw-thalamus` is the v1 software simulation of a native vector
+routing layer. It removes text from the inter-module bus for the case
+where the consumer is not a human.
+
+This is Phase 1 of three. Phase 1 is single-process, in-memory,
+Python-only. Phase 2 is multi-process with shared memory or RDMA.
+Phase 3 is hardware. v1 is Phase 1.
+
+## 2. Why now
+
+- Phase 3 #4 in `RESEARCH_BACKLOG.md` (next item after AEGIS and SGA-MCTS).
+- The four memory layers are already deployed (Redis hot, lancedb
+  vector, memory-wiki episodic, active-memory injection). Three of
+  the four hippocampus roles described in the thesis are live.
+  The thalamus is the missing piece that uses them properly.
+- `openclaw-aegis-signer` and `openclaw-sga-mcts-atoms` are public.
+  The thalamus is the third plugin in the same series and the most
+  load-bearing one.
+
+## 3. Out of scope (do NOT do in v1)
+
+- Distributed multi-process operation. Phase 2.
+- Hardware accelerator, FPGA, NPU. Phase 3.
+- Custom CUDA kernels or low-level tensor ops. Use numpy and torch
+  CPU only.
+- Training new encoders. Use SigLIP, e5-small, Whisper encoder as-is.
+- Training new modality adapters from scratch. v1 uses simple linear
+  projections, randomly initialized then frozen. v1.1 adds learned
+  adapters.
+- Replacing OpenClaw's MCP transport. Tensor exchange happens within
+  the thalamus plugin process. The plugin still surfaces text-friendly
+  tools for agents that do need text.
+- Auto-discovery of installed encoders. v1 has a hardcoded module
+  list in config.
+
+## 4. Acceptance criteria (Inspector verifies each)
+
+The implementation is APPROVED if and only if **all** the following
+are true after Builder reports done.
+
+1. `pip install` succeeds in `~/.openclaw/thalamus/.venv` for: `numpy`,
+   `torch` (CPU only), `transformers`, `sentence-transformers`,
+   `pillow`. No CUDA, no GPU.
+2. File `~/.openclaw/thalamus/specialists.py` exists and exports:
+   - `text_encoder(text: str) -> np.ndarray[1536]` using e5-small or
+     equivalent
+   - `image_encoder(image_path: str) -> np.ndarray[768]` using
+     SigLIP-base or DINOv2-small
+   - At least one of the two must run successfully on a 4 GB Pi 5
+     in under five seconds per call. The other may be a stub that
+     returns zeros for v1, with a TODO marker.
+3. File `~/.openclaw/thalamus/adapters.py` exists and exports:
+   - `text_to_workspace(v_text) -> v_workspace[512]`
+   - `image_to_workspace(v_image) -> v_workspace[512]`
+   Both are simple linear projections, randomly initialized, frozen.
+   The 512-dim shared workspace size is a config parameter, default
+   512, valid range 256 to 2048.
+4. File `~/.openclaw/thalamus/router.py` exists. The router class:
+   - Holds a queue of `Packet` namedtuples with fields
+     `(source_modality, source_module, target_module, vector,
+       priority, ts_ns, packet_id)`.
+   - Has a `route(packet)` method that returns immediately and a
+     `tick()` method that processes one item from the queue.
+   - Logs every routing decision to
+     `~/.openclaw/thalamus/router.log.jsonl` for audit.
+5. File `~/.openclaw/thalamus/memory.py` exists. The memory wrapper:
+   - Stores raw embeddings keyed by `packet_id` in
+     `~/.openclaw/thalamus/embed_cache/` as `.npy` files.
+   - Writes a metadata row per packet to a small SQLite at
+     `~/.openclaw/thalamus/embeds.sqlite` with fields
+     `(packet_id, modality, source_module, ts_ns, file_path)`.
+   - Provides `recall(packet_id)` returning the original ndarray.
+6. File `~/.openclaw/thalamus/index.js` (the OpenClaw plugin entry):
+   - Uses `definePluginEntry` from `openclaw/plugin-sdk/plugin-entry`.
+   - Registers MCP tools:
+     - `thalamus_encode(modality, payload_path)` returns `packet_id`.
+     - `thalamus_route(packet_id, target_module)` returns ack.
+     - `thalamus_recall(packet_id)` returns metadata + summary text
+       generated by passing the embedding through the language head
+       (which is text-only and lossy by definition; this tool exists
+       to let agents that cannot consume vectors at least see what
+       was routed).
+   - Subscribes to `agent_end` to flush the router log and replay
+     a small batch of recent packets through the DMN replay loop.
+7. **Smoke test 1 (text encode + recall)**: Encode a known sentence,
+   recall the packet by id, recover the original text via the
+   language head. Cosine similarity between recall and the original
+   text-embedding-3-small embedding of the same sentence must be
+   above 0.6. Output saved to `tests/output/text_roundtrip.txt`.
+8. **Smoke test 2 (cross-modal route)**: Encode a small test image
+   to a vision packet. Route to the reasoning core stub. The core
+   stub computes the L2 norm and returns a packet with the norm in
+   metadata. Verify the routing log shows the route entry, the
+   memory cache holds the original vision packet, and the reasoning
+   stub's response packet is also stored. Output to
+   `tests/output/cross_modal.txt`.
+9. **Smoke test 3 (DMN replay)**: After 10 packets have been routed,
+   trigger `agent_end`. Verify the replay loop pulls at least three
+   past packets from the embed cache, runs them through the
+   reasoning stub a second time, and writes new association rows to
+   the SQLite. Output to `tests/output/dmn_replay.txt`.
+10. README explains install steps, plugin registration, and the
+    canonical packet flow. Includes the architecture diagram from
+    the thesis post.
+11. `openclaw plugins inspect openclaw-thalamus` returns
+    `Status: loaded`, `Tools: thalamus_encode, thalamus_route,
+    thalamus_recall`, `Typed hooks: agent_end`.
+
+## 5. Architecture
+
+### 5.1 File layout
+```
+~/.openclaw/thalamus/
+├── .venv/                            # numpy + torch + transformers
+├── index.js                          # canonical OpenClaw plugin
+├── specialists.py                    # encoders (text, image, audio stub)
+├── adapters.py                       # modality -> shared workspace
+├── router.py                         # packet queue + tick loop
+├── memory.py                         # raw embedding cache + sqlite
+├── language_head.py                  # final text decoder (lossy by design)
+├── replay.py                         # DMN replay loop
+├── README.md
+├── package.json
+├── openclaw.plugin.json
+├── LICENSE                           # MIT
+└── tests/
+    ├── seed_test_images.py           # downloads 3 small test images
+    ├── smoke_text_roundtrip.sh
+    ├── smoke_cross_modal.sh
+    ├── smoke_dmn_replay.sh
+    └── output/
+        ├── text_roundtrip.txt
+        ├── cross_modal.txt
+        └── dmn_replay.txt
+```
+
+### 5.2 Packet schema
+
+```python
+@dataclass(frozen=True)
+class Packet:
+    packet_id: str          # UUID4
+    source_modality: str    # text | image | audio | reasoning
+    source_module: str      # e5-small | siglip-base | reasoning-core | ...
+    target_module: str      # reasoning-core | critic | memory | language-head
+    vector: np.ndarray      # shape varies pre-adapter, 512-dim post-adapter
+    priority: int           # 0 (drop) to 9 (urgent)
+    ts_ns: int              # time.monotonic_ns()
+    metadata: dict          # source-specific (path, dimensions, etc.)
+```
+
+### 5.3 Router decision rules (v1)
+
+- FIFO within each priority bucket.
+- Drop packets with priority 0 if queue depth exceeds N (config, default 64).
+- Maximum hop count per packet 3, after which packet expires and is
+  written to the dead-letter log.
+- No cycles: a packet that has visited a module cannot revisit it
+  in the same trace.
+
+### 5.4 Adapter alignment (v1 cheap path)
+
+v1 does not train adapters. It uses random orthogonal linear
+projections, frozen at first run, persisted to
+`~/.openclaw/thalamus/adapters/{modality}.npy`. This means modules
+do not yet truly speak the same language. They speak a language
+that is at least lower-dimensional and consistent.
+
+v1.1 will replace these with adapters trained on (image, caption)
+pairs and (audio, transcript) pairs to maximize cosine similarity
+in the shared workspace. v1 documents this gap as a known limitation.
+
+### 5.5 DMN replay (v1 minimal)
+
+On every `agent_end` event:
+
+1. Pick at random three packets from the last hour of the embed cache.
+2. For each, run through the reasoning stub a second time. Compare
+   the stub's first-pass and replay outputs. If different, write the
+   diff as a new association row to `embeds.sqlite`.
+3. Cap replay to one minute of wallclock per `agent_end`.
+4. If the trading bot is at high CPU (`uptime` > 4.0), skip replay
+   for that tick.
+
+This is enough to demonstrate the loop. Real DMN replay (mining the
+hippocampus for productive associations during idle periods) is a
+v2 problem.
+
+## 6. Failure modes and v1 responses
+
+| Mode | Builder response |
+|------|------------------|
+| `transformers` install fails on Pi (ARM64 wheel mismatch) | Use `pip install --no-binary` and document the slow path. Cache the result. |
+| SigLIP weights too large for 4 GB Pi RAM | Fall back to DINOv2-small (~22M params). If even that fails, image encoder ships as a zeros stub for v1. |
+| Adapters degenerate (all projections to zero) | Re-seed with a known random orthogonal matrix from numpy. Document the seed in `adapters/seed.txt`. |
+| Replay loop blows the budget (>1 min) | Cap and exit. Log the cap event. Do not page Mami. |
+| `child_process` flagged by OpenClaw plugin install | Use `--dangerously-force-unsafe-install` per AEGIS pattern. The thalamus plugin only spawns the Python venv it ships, no arbitrary commands. |
+| Inspector REJECTED twice in a row | ABORT and write postmortem. Do not iterate further; needs Mami review. |
+
+## 7. Cost cap
+
+- Builder: max 24 turns (gpt-5-codex 0.33x ≈ 8 premium req).
+- Inspector: max 4 turns per review (Sonnet ≈ 4 premium req).
+- Total budget for v1 implementation: **16 premium req hard cap**.
+- No external API calls during runtime in v1 (encoders are local).
+- Disk: encoders ~1 GB, raw embeddings ~10 MB per 1k packets.
+
+## 8. Inspector review checklist
+
+- [ ] All 11 acceptance criteria satisfied (file by file check).
+- [ ] No `gmail.send`, no `git push origin main`, no `gh repo delete`
+      anywhere in the code.
+- [ ] No fabrication: claims like "encoder loads in 4s" must have a
+      timing test in `tests/output/`.
+- [ ] All three smoke test outputs match expectations (text roundtrip
+      cosine > 0.6, cross-modal route logged, DMN replay produces at
+      least one association row).
+- [ ] Adapter alignment limitation is documented in README, not hidden.
+- [ ] No new outbound network calls except the initial one-time
+      huggingface model download.
+- [ ] PR diff < 1500 lines total.
+- [ ] AGENT.md is not modified by Builder. Captain's AGENT.md update
+      to use `thalamus_route` ships separately, after v1 is merged.
+
+## 9. Definition of done
+
+1. PR on `github.com/msbel5/openclaw-thalamus` `agent/v1` branch.
+2. Inspector APPROVED in session log.
+3. `~/.openclaw/thalamus/` exists on Pi with all 9 Python files +
+   compiled adapters + working venv.
+4. `openclaw plugins inspect openclaw-thalamus` returns Status loaded
+   with the three tools and one hook listed.
+5. `tests/output/{text_roundtrip, cross_modal, dmn_replay}.txt`
+   committed and showing pass markers.
+6. README on `github.com/msbel5/openclaw-thalamus` published.
+7. `npm publish --access public` for `@msbel/openclaw-thalamus`.
+8. Telegram message to Mami: "thalamus v1 done, branch agent/v1,
+   smoke tests pass, Inspector APPROVED, npm @msbel/openclaw-thalamus@1.0.0".
+
+If any of 1-8 missing, DEV_THALAMUS_V1 task is NOT done. Stays in
+queued-tasks.md.
+
+## 10. After v1 ships
+
+The thesis post promises Phase 1 software, Phase 2 distributed,
+Phase 3 hardware. After v1:
+
+- v1.1: trained adapters (paired data, contrastive loss). Two weeks
+  of work, dataset prep heavy.
+- v1.2: real DMN replay (mining hippocampus for associations during
+  idle). Builds on the v1 stub.
+- v1.3: integrate Captain to use `thalamus_route` for cross-agent
+  spawn payloads instead of text.
+- v2: multi-process. Encoders, reasoning, memory each in own process.
+  Tensor passing via shared memory. This is when the latency
+  improvements over text roundtrips become measurable.
+- v3: hardware. Out of personal scope, requires collaborators.
+
+## 11. What this gives Alcyone
+
+Today: agents serialize through text and lose information at every
+hop.
+
+After v1: agents can route raw vectors when the consumer is another
+agent. Text appears only at the final user-facing message. Memory
+preserves modality. Idle periods produce associations. The thesis
+post stops being aspirational and starts being demonstrable.
+
+That is enough for v1.

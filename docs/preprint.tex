@@ -1,0 +1,587 @@
+\documentclass[11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{microtype}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{authblk}
+\usepackage{url}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black,
+  pdftitle={The Thalamus Layer: Native Vector Routing for Edge AI Agents},
+  pdfauthor={Muhammet Sıddık Bel}
+}
+
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection}{0.6em}{}
+
+\title{\Large\bfseries The Thalamus Layer:\\
+Native Vector Routing for Edge AI Agents}
+
+\author[1]{Muhammet Sıddık Bel\thanks{\texttt{msbel5@gmail.com}}}
+\affil[1]{Independent. Diyarbakır, Turkey. \url{https://msbel.com}}
+
+\date{April 29, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+Multi-agent large language model systems serialize all inter-module
+communication through human language. Vision encoders produce dense
+embeddings, then caption them into English. Planning modules read the
+caption, re-embed it, plan, and write a sentence to the critic. The
+critic re-embeds and produces a verdict. By the time a single decision
+is made, the same content has been encoded into and decoded out of
+embedding space five or six times. We argue that this is the dominant
+hidden cost of contemporary agentic systems. We propose an alternative
+runtime architecture in which specialist encoders communicate via
+modality-aligned vectors through a software router we call the
+\emph{thalamus layer}, with a layered hippocampal memory that preserves
+modality and an idle replay loop modeled on the default mode network.
+We describe a Phase 1 reference implementation as an OpenClaw plugin,
+deployable on a Raspberry Pi 5 with 4 GB of RAM, and we sketch a
+two-step roadmap toward distributed and hardware-accelerated versions.
+We position this proposal against contemporary work on latent
+multi-agent collaboration, perceiver-style architectures, and
+neurobiologically inspired retrieval, and argue that the missing
+contribution is not a new model but a small, open, replicable runtime
+that runs on hardware a hobbyist can own.
+\end{abstract}
+
+\noindent\textbf{Keywords:} multi-agent systems, latent space,
+LLM agents, OpenClaw, edge inference, agent runtime, hippocampal
+memory, default mode network.
+
+\section{Introduction}
+
+The unit of communication between modules in modern multi-agent
+language model systems is text. A vision encoder produces a
+high-dimensional embedding that captures texture, geometry, and
+material cues. The system then collapses this embedding into a
+short English caption such as ``a corroded pipe with visible
+water leak.'' A downstream planning model re-embeds the caption,
+loses most of the original visual fidelity, and proceeds. A
+critic reads the planner's text output, re-embeds again, and
+produces a verdict. None of these encode-decode round trips are
+required for the consumers to function. They are an artifact of
+an interface convention inherited from the chatbot era, in which
+the only consumer was a human and the only viable medium was
+language.
+
+The cost of this convention is mostly invisible because it
+distributes itself across many small budget items: tokens spent
+generating intermediate captions, latency added by extra forward
+passes, fidelity discarded at each modality boundary. Aggregated,
+these costs dominate latency and per-task expense in non-trivial
+agent loops. They also place a hard ceiling on what small models
+can do in agent settings, because each round trip leaves less
+budget for actual reasoning.
+
+This paper argues that the next architectural step for agentic
+systems is to remove text from the inter-module bus when the
+consumer is another module, and reserve text for the final
+user-facing turn. We refer to the routing layer required to make
+this work as the \emph{thalamus layer}, by analogy to the
+biological thalamus, which serves as a relay and gating structure
+between sensory cortex and cortical processing areas without
+itself performing reasoning. We describe a memory layer modeled
+on the hippocampus, an idle-time replay loop modeled on the
+default mode network (DMN), and a roadmap toward distributed and
+hardware-accelerated versions of the same architecture.
+
+The contribution of this paper is not a new model. It is an
+\emph{architectural proposal supported by a working Phase 1
+implementation}, deployable on a single Raspberry Pi 5, released
+under the MIT license, with companion plugins for tool-call audit
+and atom retrieval already published as installable npm packages.
+
+\section{The Bottleneck}
+\label{sec:bottleneck}
+
+Consider a typical agentic flow that processes a multimodal user
+query, for instance a photo of a broken appliance accompanied by
+a request for repair instructions.
+
+\begin{enumerate}
+  \item The vision encoder ingests the image and produces a
+        $d_v$-dimensional embedding $v \in \mathbb{R}^{d_v}$,
+        with $d_v$ in the range $512$ to $1024$ for current
+        small encoders and up to $4096$ for larger ones.
+  \item The system requires the embedding to flow downstream.
+        Lacking a native vector channel, it asks the vision
+        model to caption the image. The captioner emits
+        $C_1 = \mathrm{decode}(v)$, a short English string.
+  \item The planning model re-embeds $C_1$ to $v' \in
+        \mathbb{R}^{d_p}$ where $d_p \neq d_v$ in general, and
+        proceeds. The mapping $v \to C_1 \to v'$ is many-to-one
+        followed by stochastic decode, and is therefore lossy by
+        construction.
+  \item The planning model emits a plan as text $C_2$, which the
+        critic re-embeds, evaluates, and replies to as text $C_3$.
+  \item The episode is committed to memory, often as $C_3$ alone,
+        with the original embeddings $v, v'$ discarded.
+\end{enumerate}
+
+The information loss at each $v \to C \to v'$ boundary is not
+hypothetical. Consider that $v$ may distinguish between the rust
+patterns of cast iron and copper plumbing, while $C_1$ likely
+flattens both to ``corroded pipe.'' The discriminative signal is
+present in the encoder output and absent in the caption. A
+downstream module that consumes only $C_1$ cannot recover it.
+
+\subsection{A small empirical probe}
+
+To make the bottleneck concrete, we generated three sentences
+through OpenAI's \texttt{text-embedding-3-small} encoder
+(1536 dimensions, $L_2$-normalized to unit norm) on a Raspberry
+Pi 5, then presented the resulting vectors to Anthropic's Claude
+Sonnet 4.6 along with the model name, dimensionality, and the
+first 20 floats of each vector. We did not provide the original
+sentences.
+
+The model correctly identified the encoder family from the
+dimension and normalization fingerprint, computed approximate
+inter-sentence cosine alignment from the visible coordinates,
+and reported the inputs as well-formed embeddings. It explicitly
+stated that it could not recover the original sentences, that it
+could not determine which embedding corresponded to which
+sentence, and that the mapping from individual dimensions to
+semantic content was opaque to it.
+
+This is the bottleneck made visible. The information was present
+in the float vectors, but the consumer was a model trained on
+text and images, not on raw embeddings. The decoder pass that
+would have recovered the sentence was not part of the consumer's
+forward path. In a realistic agent flow, this is also why the
+system cannot route the embedding directly: there is no
+ingress for it on the consuming side.
+
+\subsection{Cost analysis}
+
+Let $\tau_e$ be the encoder forward pass cost, $\tau_d$ the
+decoder forward pass cost, and $L$ the average length of an
+intermediate text artifact in tokens. A naive encode-decode-
+reencode hop incurs $\tau_d + L \cdot c_t + \tau_e$ where
+$c_t$ is the per-token autoregressive cost. For a chain of
+$k$ specialist modules under the current text-bus convention,
+the aggregate inter-module cost is approximately
+$(k-1)(\tau_d + L \cdot c_t + \tau_e)$, plus any text
+context held by intermediate modules.
+
+Under a native vector bus the equivalent cost is at most
+$(k-1) \cdot \tau_a$, where $\tau_a$ is the cost of a small
+adapter projection between modality spaces, typically a
+single linear layer or shallow MLP with two to three orders of
+magnitude fewer parameters than $\tau_d$ or $\tau_e$. The
+difference is dominant in the typical regime where $L$ is
+in the hundreds of tokens and $c_t$ is non-negligible.
+
+The fidelity argument is independent. Even at $c_t \to 0$,
+the chain remains lossy because each text serialization is a
+many-to-one map.
+
+\section{Architecture}
+\label{sec:architecture}
+
+We propose a runtime composed of six logical layers (Figure
+\ref{fig:arch}).
+
+\begin{figure}[ht]
+\centering
+\begin{verbatim}
+                 user input
+                     |
+                     v
+   +-------------------------------------+
+   |  specialist encoders                |
+   |  (vision, audio, text, ...)         |
+   +-----------------+-------------------+
+                     |  raw embeddings
+                     v
+   +-------------------------------------+
+   |  modality adapters                  |
+   |  (frozen or trained projections)    |
+   +-----------------+-------------------+
+                     |  shared workspace vectors
+                     v
+   +-------------------------------------+
+   |  thalamus router                    |
+   |  (gating, prioritization, FIFO)     |
+   +--+-----+-----+-----------+----------+
+      |     |     |           |
+      v     v     v           v
+   +--+--+ +-+--+ +--+----+ +-+-------+
+   |reas | |crit| |planner| |memory   |
+   |core | |core| |core   | |layer    |
+   +-----+ +----+ +-------+ +---------+
+                                |
+                  hippocampal memory store
+                                |
+                  +-------------+-------------+
+                  | hot (Redis) | semantic DB |
+                  | episodic    | raw embed   |
+                  +-------------+-------------+
+
+                language head only at
+                final user-facing turn
+\end{verbatim}
+\caption{The thalamus layer architecture. Specialist encoders
+produce modality-specific embeddings, which are projected into
+a shared workspace by frozen or trained adapters. The thalamus
+router gates and forwards packets to consumer modules. A
+layered hippocampal store preserves modality and supports
+idle-time replay (DMN). Text is generated only at the final
+user-facing step.}
+\label{fig:arch}
+\end{figure}
+
+\subsection{Specialist encoders}
+The specialist layer consists of unaltered, off-the-shelf
+encoders for each modality the system supports. Vision uses
+SigLIP \cite{siglip} or DINOv2 \cite{dinov2}. Audio uses a
+Whisper encoder front-end \cite{whisper} or EnCodec
+\cite{encodec}. Text uses a small embedding model such as
+\texttt{e5-small} \cite{e5} or
+\texttt{text-embedding-3-small}. None of these are modified.
+
+\subsection{Modality adapters}
+Each encoder produces vectors in a different ambient space and
+of a different dimensionality. The adapter layer projects each
+modality's output into a shared workspace vector space of fixed
+dimension $d_w$ (default 512 in our reference implementation).
+In Phase 1 these adapters are frozen random orthogonal linear
+maps; the workspace is consistent but not aligned across
+modalities. In Phase 1.1 they are trained on paired data
+(image-caption, audio-transcript) with a contrastive loss to
+maximize cross-modal cosine similarity.
+
+\subsection{Thalamus router}
+The router is a software loop that holds a queue of \emph{packets}.
+Each packet has a unique identifier, a source modality, a source
+module, an optional target module, the workspace vector, a
+priority bucket, a creation timestamp, and a metadata dictionary.
+The router applies FIFO ordering within each priority bucket,
+drops low-priority packets when queue depth exceeds a threshold,
+and enforces a maximum hop count of three to prevent cycles.
+Routing decisions are logged in append-only JSONL for downstream
+audit, in line with the AEGIS plugin pattern \cite{aegis}.
+
+The router \emph{is not the smart part of the system}. It does
+no reasoning. The biological analogy is intentional: the
+thalamus relays signals to cortical regions and gates them by
+attention, but cortical computation happens elsewhere. The
+contribution of the router is to make the inter-module bus
+modality-preserving and structurally observable.
+
+\subsection{Reasoning, critic, and planner cores}
+These are the cortical specialists. Each consumes workspace
+vectors, produces workspace vectors, and may emit additional
+metadata. In our reference implementation, reasoning and critic
+cores are existing OpenClaw agents (a five-agent crew composed
+of Liaison, Captain, Builder, Inspector, and Archivist roles)
+exposed to the thalamus through small Python wrappers that
+translate between agent message formats and packets.
+
+\subsection{Hippocampal memory}
+The memory layer is built from four components, each of which
+already exists in the OpenClaw plugin ecosystem: a hot working-
+memory tier in Redis, a vector index in LanceDB \cite{memlance},
+an episodic markdown store in an Obsidian-compatible vault
+\cite{memwiki}, and a fourth, modality-preserving raw embedding
+cache. The fourth component is novel relative to the published
+OpenClaw memory plugins and is the smallest concrete addition
+required to operate the thalamus end-to-end.
+
+\subsection{Default Mode Network replay}
+The DMN component is an idle-loop replay mechanism that
+activates when the agent has no active user-facing task. It
+samples past packets from the embed cache, re-runs them through
+the reasoning core, and writes new association rows when
+results differ from the originally stored output. This is
+functionally analogous to memory consolidation during slow-wave
+sleep \cite{dmn-review}, and operationally it is a heartbeat
+slot that takes at most one minute of wallclock per invocation.
+It is bounded, observable, and terminates.
+
+\section{Reference Implementation}
+\label{sec:impl}
+
+The reference implementation, named \texttt{openclaw-thalamus},
+is a Phase 1 software simulation deployed as an OpenClaw plugin
+on a Raspberry Pi 5 with 4 GB of RAM. It uses NumPy for vector
+arithmetic and Torch (CPU only) for encoder forward passes. It
+ships under MIT license at \url{https://github.com/msbel5/openclaw-thalamus}
+and at \url{https://www.npmjs.com/package/@msbel/openclaw-thalamus}.
+
+The plugin registers three MCP tools, \texttt{thalamus\_encode},
+\texttt{thalamus\_route}, and \texttt{thalamus\_recall}, and
+subscribes to the \texttt{agent\_end} hook to trigger DMN replay.
+The plugin coexists with two earlier plugins from the same
+author: \texttt{@msbel/openclaw-aegis-signer}, which provides
+Ed25519-signed tool-call audit \cite{aegis}, and
+\texttt{@msbel/openclaw-sga-mcts-atoms}, which provides
+plan-time tool-use atom retrieval \cite{sgamcts}. Together
+these three plugins constitute a small, observable, and
+auditable agent runtime running entirely on commodity edge
+hardware.
+
+We emphasize that Phase 1 is single-process and does not yet
+realize the full latency benefits of native vector routing. It
+demonstrates the \emph{architecture} on hardware that is
+accessible to individual researchers and hobbyists, and it
+removes text from the inter-module bus for cases where the
+consumer is another module.
+
+\section{Related Work}
+\label{sec:related}
+
+\paragraph{Latent multi-agent collaboration.}
+LatentMAS \cite{latentmas} proposes inter-agent collaboration in
+latent space rather than text and reports favorable performance
+in benchmark settings. Our proposal differs in placing latent
+collaboration inside a single edge runtime with explicit
+hippocampal memory and DMN replay, and in shipping a working
+plugin rather than a benchmark.
+
+\paragraph{Latent prediction and perceiver-style architectures.}
+V-JEPA \cite{vjepa} performs video prediction directly in
+representation space rather than at the pixel level, supporting
+the design principle ``do not decode just to encode again.''
+Perceiver IO \cite{perceiverio} is the architectural ancestor
+for general-purpose latent processing across modalities and
+informs the modality-adapter and shared-workspace decisions in
+this paper.
+
+\paragraph{Neurobiologically inspired retrieval.}
+HippoRAG \cite{hipporag} models the hippocampal indexing
+function via a knowledge graph plus Personalized PageRank for
+multi-hop retrieval. Our hippocampal memory layer is more
+modest, layering existing components, but the design intent is
+aligned: the memory is an indexer between short-term and
+long-term storage, not the central processor.
+
+\paragraph{Global Workspace Theory in agents.}
+Theater of Mind \cite{theaterofmind} proposes Global Workspace
+Agents with a central broadcast hub plus heterogeneous
+functionally-constrained agents, and is the closest existing
+work to the thalamus and cortex split presented here. The
+present paper differs in providing an edge implementation and
+in committing to native vector exchange rather than broadcast
+of structured messages.
+
+\paragraph{Embodied and continuous cognition.}
+JEPA \cite{jepa} and related work from the I-JEPA / V-JEPA
+program articulate continuous prediction in representation
+space as a route past the limits of token-level autoregression.
+The thalamus layer is complementary, addressing inter-module
+communication where the modules are not necessarily JEPA
+predictors.
+
+\section{Roadmap}
+\label{sec:roadmap}
+
+\paragraph{Phase 1: software simulation, in-process.} The
+implementation described in Section~\ref{sec:impl}. Single
+Python process, all encoders and adapters loaded as modules,
+tensor exchange via NumPy in shared memory, memory layers as
+already deployed, DMN loop as a heartbeat slot. Already
+deployable on a 4 GB Pi 5.
+
+\paragraph{Phase 2: distributed, multi-process.} Encoders,
+reasoning cores, and memory each run as separate processes.
+The thalamus runs in its own process and addresses peers via
+shared memory or RDMA-style local transport. JSON metadata
+only, with binary tensor payloads transmitted out of band. This
+is where the latency improvements over the text bus become
+empirically measurable. The hardware floor likely rises to an
+8 GB Pi or a small cluster of Pi 5s.
+
+\paragraph{Phase 3: hardware thalamus.} A dedicated routing
+fabric, plausibly an FPGA card or an NPU operated as a routing
+accelerator (the Hailo class of devices in the AI HAT+ family
+is a candidate). The job of this hardware is to move tensors
+between modules with predictable latency and gating semantics,
+approximating the role of the biological thalamus. This phase
+is more than a year out and requires collaborators.
+
+\section{Discussion and Limitations}
+\label{sec:discussion}
+
+\paragraph{Adapter alignment.} The most important open
+question in this proposal is whether modality adapters can be
+made to produce a meaningfully shared workspace without
+expensive paired-data training. Phase 1 punts on this question
+by using random orthogonal projections, which guarantee
+consistency but not alignment. Phase 1.1 must answer it with
+contrastively trained adapters; if it fails, the architecture
+collapses to ``faster but no smarter.''
+
+\paragraph{Encoder choice constrains the shared workspace.}
+SigLIP and CLIP-family encoders are pretrained against text and
+have an implicit shared space already. Audio encoders such as
+Whisper's encoder and EnCodec do not. The hardest adapters are
+audio-to-workspace and reasoning-state-to-workspace.
+
+\paragraph{The DMN replay loop is bounded.} Real biological DMN
+runs continuously and at scale. The Phase 1 replay loop is a
+heartbeat-bounded, one-minute-per-tick approximation. It
+demonstrates the mechanism but does not approach the
+qualitative behavior of biological consolidation. We do not
+claim it does.
+
+\paragraph{No claims about consciousness.} This paper makes no
+claims about consciousness, sentience, or self-modeling beyond
+what is already required to maintain agent identity across
+sessions. The brain analogies are mapped to engineering
+functions and are not load-bearing for the proposal.
+
+\paragraph{Edge as a positioning choice.} We argue that the
+contribution of an edge implementation is not capability
+saturation but \emph{replicability}. The runtime described here
+is intended to be reproducible by a single researcher with
+hardware that costs less than two hundred dollars. Cluster
+implementations of related ideas already exist in well-funded
+laboratories and do not always ship.
+
+\section{Conclusion}
+
+The bottleneck in current multi-agent language model systems is
+the convention that all inter-module communication must
+serialize through human language. This convention is a holdover
+from the chatbot era, where the only consumer was a human. When
+the consumer is another module, the convention is wasteful and
+lossy. We propose a runtime architecture, the thalamus layer,
+that removes text from the inter-module bus by routing
+modality-preserving vectors through a software router with a
+layered hippocampal memory and an idle-time replay loop. We
+describe a Phase 1 reference implementation deployable on a
+Raspberry Pi 5 and a roadmap toward distributed and
+hardware-accelerated versions. The thesis we defend is not that
+the brain analogies are mechanically literal; it is that the
+shape of the brain's modular processing offers an engineering
+template that is well-matched to where multi-agent runtimes are
+already heading, and that a small, open, replicable
+implementation is a more useful contribution at this point than
+another paper-only proposal.
+
+\section*{Code and Reproducibility}
+
+The reference implementation is available at:
+\begin{itemize}[leftmargin=2em,itemsep=0pt]
+  \item \url{https://github.com/msbel5/openclaw-thalamus} (this work, MIT)
+  \item \url{https://github.com/msbel5/openclaw-aegis-signer} (companion: tool-call audit)
+  \item \url{https://github.com/msbel5/openclaw-sga-mcts-atoms} (companion: atom retrieval)
+\end{itemize}
+
+\noindent
+The corresponding npm packages are
+\texttt{@msbel/openclaw-thalamus},
+\texttt{@msbel/openclaw-aegis-signer}, and
+\texttt{@msbel/openclaw-sga-mcts-atoms}, all released under
+the MIT license. The longer-form, less formal version of this
+proposal is available at \url{https://msbel.com}.
+
+\section*{Acknowledgments}
+
+The author thanks the maintainers of the OpenClaw project for
+the plugin SDK that made this work possible. The author also
+thanks Claude Sonnet 4.6 (Anthropic) and GPT-5 (OpenAI) for
+sharpening the architectural framing during early drafts;
+errors of judgment that survived this process remain the
+author's.
+
+\begin{thebibliography}{99}
+
+\bibitem{aegis}
+Bel, M.~S. (2026).
+\emph{openclaw-aegis-signer: Ed25519-signed tool-call audit for OpenClaw}.
+\url{https://github.com/msbel5/openclaw-aegis-signer}.
+
+\bibitem{sgamcts}
+Bel, M.~S. (2026).
+\emph{openclaw-sga-mcts-atoms: Plan-time atom retrieval for OpenClaw}.
+\url{https://github.com/msbel5/openclaw-sga-mcts-atoms}.
+
+\bibitem{memlance}
+OpenClaw bundled plugin. \emph{memory-lancedb}.
+\url{https://docs.openclaw.ai/plugins/memory-lancedb}.
+
+\bibitem{memwiki}
+OpenClaw bundled plugin. \emph{memory-wiki}.
+\url{https://docs.openclaw.ai/plugins/memory-wiki}.
+
+\bibitem{siglip}
+Zhai, X., Mustafa, B., Kolesnikov, A., \& Beyer, L. (2023).
+Sigmoid Loss for Language Image Pre-Training (SigLIP).
+
+\bibitem{dinov2}
+Oquab, M., Darcet, T., Moutakanni, T., et~al. (2024).
+DINOv2: Learning Robust Visual Features without Supervision.
+
+\bibitem{whisper}
+Radford, A., Kim, J.~W., Xu, T., et~al. (2023).
+Robust Speech Recognition via Large-Scale Weak Supervision.
+
+\bibitem{encodec}
+Défossez, A., Copet, J., Synnaeve, G., \& Adi, Y. (2023).
+High Fidelity Neural Audio Compression.
+
+\bibitem{e5}
+Wang, L., Yang, N., Huang, X., et~al. (2024).
+Multilingual E5 Text Embeddings.
+
+\bibitem{hipporag}
+Gutiérrez, B.~J., Shu, Y., Gu, Y., Yasunaga, M., \& Su, Y. (2024).
+HippoRAG: Neurobiologically Inspired Long-Term Memory for Large
+Language Models.
+\emph{NeurIPS}.
+arXiv:2405.14831.
+
+\bibitem{theaterofmind}
+``Theater of Mind'' for LLMs (2026).
+A Cognitive Architecture Based on Global Workspace Theory.
+arXiv:2604.08206.
+
+\bibitem{latentmas}
+Latent Collaboration in Multi-Agent Systems (2025).
+arXiv:2511.20639.
+
+\bibitem{vjepa}
+Bardes, A., Garrido, Q., Ponce, J., et~al. (2024).
+V-JEPA: Latent Video Prediction for Visual Representation Learning.
+\emph{OpenReview} WFYbBOEOtv.
+
+\bibitem{perceiverio}
+Jaegle, A., Borgeaud, S., Alayrac, J.-B., et~al. (2021).
+Perceiver IO: A General Architecture for Structured Inputs and Outputs.
+arXiv:2107.14795.
+
+\bibitem{jepa}
+LeCun, Y. (2022).
+A Path Towards Autonomous Machine Intelligence.
+\emph{OpenReview}.
+
+\bibitem{dmn-review}
+Raichle, M.~E. (2015).
+The Brain's Default Mode Network.
+\emph{Annual Review of Neuroscience}, 38, 433--447.
+
+\end{thebibliography}
+
+\end{document}
