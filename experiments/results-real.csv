@@ -1,0 +1,3 @@
+pipeline,count,latency_median_ms,latency_p95_ms,latency_p99_ms,avg_tokens,avg_fidelity,task_success_rate
+text-bus,150,1837.632,2303.725,3694.863,18.193,0.078195,6.000
+thalamus,150,174.782,209.884,252.303,0.000,0.068837,4.667

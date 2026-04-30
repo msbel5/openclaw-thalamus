@@ -1,0 +1,27 @@
+[
+  {
+    "id": "q1",
+    "question": "What color is the object?",
+    "expectedAnswer": "blue"
+  },
+  {
+    "id": "q2",
+    "question": "What shape is the object?",
+    "expectedAnswer": "diamond"
+  },
+  {
+    "id": "q3",
+    "question": "Is the object blue?",
+    "expectedAnswer": "yes"
+  },
+  {
+    "id": "q4",
+    "question": "Describe the object.",
+    "expectedAnswer": "blue diamond"
+  },
+  {
+    "id": "q5",
+    "question": "What is in the image?",
+    "expectedAnswer": "blue diamond"
+  }
+]

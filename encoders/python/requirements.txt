@@ -1,0 +1,2 @@
+# Default encoder server has no required third-party Python dependencies.
+# See requirements-real.txt for the optional HuggingFace CPU backend.

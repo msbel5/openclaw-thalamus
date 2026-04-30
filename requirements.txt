@@ -1,0 +1,2 @@
+# Phase 2 Docker default intentionally uses Python stdlib fallback encoders and
+# plotting. Install encoders/python/requirements-real.txt to enable HF models.

@@ -7,6 +7,8 @@
   },
   "include": [
     "eslint.config.js",
+    "vitest.config.ts",
+    "scripts/**/*.mjs",
     "src/**/*.ts",
     "src/**/*.d.ts",
     "test/**/*.ts"

@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+.git
+.cache
+experiments/results.sqlite
+experiments/results.csv
+figures/*.png

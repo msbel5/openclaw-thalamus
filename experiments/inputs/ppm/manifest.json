@@ -1,0 +1,1655 @@
+{
+  "generated_by": "openclaw-thalamus-phase2",
+  "items": [
+    {
+      "id": "fixture-01",
+      "color": "red",
+      "shape": "square",
+      "imagePath": "fixture-01/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "red"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object red?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "red square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "red square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-02",
+      "color": "blue",
+      "shape": "square",
+      "imagePath": "fixture-02/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "blue"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object purple?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "blue square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "blue square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-03",
+      "color": "green",
+      "shape": "square",
+      "imagePath": "fixture-03/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "green"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object green?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "green square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "green square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-04",
+      "color": "yellow",
+      "shape": "square",
+      "imagePath": "fixture-04/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "yellow"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object white?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "yellow square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "yellow square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-05",
+      "color": "purple",
+      "shape": "square",
+      "imagePath": "fixture-05/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "purple"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object purple?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "purple square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "purple square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-06",
+      "color": "orange",
+      "shape": "square",
+      "imagePath": "fixture-06/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "orange"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object brown?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "orange square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "orange square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-07",
+      "color": "white",
+      "shape": "square",
+      "imagePath": "fixture-07/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "white"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object white?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "white square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "white square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-08",
+      "color": "black",
+      "shape": "square",
+      "imagePath": "fixture-08/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "black"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object grey?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "black square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "black square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-09",
+      "color": "brown",
+      "shape": "square",
+      "imagePath": "fixture-09/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "brown"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object brown?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "brown square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "brown square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-10",
+      "color": "gray",
+      "shape": "square",
+      "imagePath": "fixture-10/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "gray"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object tan?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "gray square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "gray square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-11",
+      "color": "grey",
+      "shape": "square",
+      "imagePath": "fixture-11/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "grey"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object grey?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "grey square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "grey square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-12",
+      "color": "pink",
+      "shape": "square",
+      "imagePath": "fixture-12/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "pink"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object blue?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "pink square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "pink square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-13",
+      "color": "tan",
+      "shape": "square",
+      "imagePath": "fixture-13/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "tan"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "square"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object tan?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "tan square"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "tan square"
+        }
+      ]
+    },
+    {
+      "id": "fixture-14",
+      "color": "red",
+      "shape": "circle",
+      "imagePath": "fixture-14/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "red"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object yellow?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "red circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "red circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-15",
+      "color": "blue",
+      "shape": "circle",
+      "imagePath": "fixture-15/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "blue"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object blue?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "blue circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "blue circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-16",
+      "color": "green",
+      "shape": "circle",
+      "imagePath": "fixture-16/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "green"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object orange?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "green circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "green circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-17",
+      "color": "yellow",
+      "shape": "circle",
+      "imagePath": "fixture-17/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "yellow"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object yellow?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "yellow circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "yellow circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-18",
+      "color": "purple",
+      "shape": "circle",
+      "imagePath": "fixture-18/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "purple"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object black?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "purple circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "purple circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-19",
+      "color": "orange",
+      "shape": "circle",
+      "imagePath": "fixture-19/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "orange"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object orange?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "orange circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "orange circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-20",
+      "color": "white",
+      "shape": "circle",
+      "imagePath": "fixture-20/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "white"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object gray?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "white circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "white circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-21",
+      "color": "black",
+      "shape": "circle",
+      "imagePath": "fixture-21/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "black"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object black?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "black circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "black circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-22",
+      "color": "brown",
+      "shape": "circle",
+      "imagePath": "fixture-22/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "brown"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object pink?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "brown circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "brown circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-23",
+      "color": "gray",
+      "shape": "circle",
+      "imagePath": "fixture-23/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "gray"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object gray?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "gray circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "gray circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-24",
+      "color": "grey",
+      "shape": "circle",
+      "imagePath": "fixture-24/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "grey"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object red?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "grey circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "grey circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-25",
+      "color": "pink",
+      "shape": "circle",
+      "imagePath": "fixture-25/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "pink"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object pink?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "pink circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "pink circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-26",
+      "color": "tan",
+      "shape": "circle",
+      "imagePath": "fixture-26/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "tan"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "circle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object green?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "tan circle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "tan circle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-27",
+      "color": "red",
+      "shape": "triangle",
+      "imagePath": "fixture-27/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "red"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object red?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "red triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "red triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-28",
+      "color": "blue",
+      "shape": "triangle",
+      "imagePath": "fixture-28/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "blue"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object purple?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "blue triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "blue triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-29",
+      "color": "green",
+      "shape": "triangle",
+      "imagePath": "fixture-29/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "green"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object green?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "green triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "green triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-30",
+      "color": "yellow",
+      "shape": "triangle",
+      "imagePath": "fixture-30/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "yellow"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object white?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "yellow triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "yellow triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-31",
+      "color": "purple",
+      "shape": "triangle",
+      "imagePath": "fixture-31/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "purple"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object purple?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "purple triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "purple triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-32",
+      "color": "orange",
+      "shape": "triangle",
+      "imagePath": "fixture-32/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "orange"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object brown?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "orange triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "orange triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-33",
+      "color": "white",
+      "shape": "triangle",
+      "imagePath": "fixture-33/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "white"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object white?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "white triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "white triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-34",
+      "color": "black",
+      "shape": "triangle",
+      "imagePath": "fixture-34/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "black"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object grey?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "black triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "black triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-35",
+      "color": "brown",
+      "shape": "triangle",
+      "imagePath": "fixture-35/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "brown"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object brown?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "brown triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "brown triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-36",
+      "color": "gray",
+      "shape": "triangle",
+      "imagePath": "fixture-36/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "gray"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object tan?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "gray triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "gray triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-37",
+      "color": "grey",
+      "shape": "triangle",
+      "imagePath": "fixture-37/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "grey"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object grey?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "grey triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "grey triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-38",
+      "color": "pink",
+      "shape": "triangle",
+      "imagePath": "fixture-38/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "pink"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object blue?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "pink triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "pink triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-39",
+      "color": "tan",
+      "shape": "triangle",
+      "imagePath": "fixture-39/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "tan"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "triangle"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object tan?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "tan triangle"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "tan triangle"
+        }
+      ]
+    },
+    {
+      "id": "fixture-40",
+      "color": "red",
+      "shape": "diamond",
+      "imagePath": "fixture-40/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "red"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "diamond"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object yellow?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "red diamond"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "red diamond"
+        }
+      ]
+    },
+    {
+      "id": "fixture-41",
+      "color": "blue",
+      "shape": "diamond",
+      "imagePath": "fixture-41/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "blue"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "diamond"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object blue?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "blue diamond"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "blue diamond"
+        }
+      ]
+    },
+    {
+      "id": "fixture-42",
+      "color": "green",
+      "shape": "diamond",
+      "imagePath": "fixture-42/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "green"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "diamond"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object orange?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "green diamond"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "green diamond"
+        }
+      ]
+    },
+    {
+      "id": "fixture-43",
+      "color": "yellow",
+      "shape": "diamond",
+      "imagePath": "fixture-43/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "yellow"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "diamond"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object yellow?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "yellow diamond"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "yellow diamond"
+        }
+      ]
+    },
+    {
+      "id": "fixture-44",
+      "color": "purple",
+      "shape": "diamond",
+      "imagePath": "fixture-44/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "purple"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "diamond"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object black?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "purple diamond"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "purple diamond"
+        }
+      ]
+    },
+    {
+      "id": "fixture-45",
+      "color": "orange",
+      "shape": "diamond",
+      "imagePath": "fixture-45/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "orange"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "diamond"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object orange?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "orange diamond"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "orange diamond"
+        }
+      ]
+    },
+    {
+      "id": "fixture-46",
+      "color": "white",
+      "shape": "diamond",
+      "imagePath": "fixture-46/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "white"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "diamond"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object gray?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "white diamond"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "white diamond"
+        }
+      ]
+    },
+    {
+      "id": "fixture-47",
+      "color": "black",
+      "shape": "diamond",
+      "imagePath": "fixture-47/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "black"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "diamond"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object black?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "black diamond"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "black diamond"
+        }
+      ]
+    },
+    {
+      "id": "fixture-48",
+      "color": "brown",
+      "shape": "diamond",
+      "imagePath": "fixture-48/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "brown"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "diamond"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object pink?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "brown diamond"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "brown diamond"
+        }
+      ]
+    },
+    {
+      "id": "fixture-49",
+      "color": "gray",
+      "shape": "diamond",
+      "imagePath": "fixture-49/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "gray"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "diamond"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object gray?",
+          "expectedAnswer": "yes"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "gray diamond"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "gray diamond"
+        }
+      ]
+    },
+    {
+      "id": "fixture-50",
+      "color": "grey",
+      "shape": "diamond",
+      "imagePath": "fixture-50/image.ppm",
+      "questions": [
+        {
+          "id": "q1",
+          "question": "What color is the object?",
+          "expectedAnswer": "grey"
+        },
+        {
+          "id": "q2",
+          "question": "What shape is the object?",
+          "expectedAnswer": "diamond"
+        },
+        {
+          "id": "q3",
+          "question": "Is the object red?",
+          "expectedAnswer": "no"
+        },
+        {
+          "id": "q4",
+          "question": "Describe the object.",
+          "expectedAnswer": "grey diamond"
+        },
+        {
+          "id": "q5",
+          "question": "What is in the image?",
+          "expectedAnswer": "grey diamond"
+        }
+      ]
+    }
+  ]
+}

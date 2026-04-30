@@ -1,0 +1,3 @@
+{"id": "q1", "question": "what is the dominant color?", "expectedAnswer": "black", "color": "black", "shape": "rectangular"}
+{"id": "q2", "question": "what shape best describes the object?", "expectedAnswer": "rectangular", "color": "black", "shape": "rectangular"}
+{"id": "q3", "question": "describe the object in one short noun phrase", "expectedAnswer": "black rectangular screen", "color": "black", "shape": "rectangular"}

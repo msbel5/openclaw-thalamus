@@ -38,6 +38,36 @@ describe("tiered memory", () => {
     );
   });
 
+  it("retrieves a stored packet directly by id", async () => {
+    const memory = new TieredMemory();
+    await memory.store(
+      memoryPacket("direct-hit", new Float32Array([1, 0])),
+      "direct packet summary",
+    );
+
+    const hit = await memory.retrieveById("direct-hit");
+
+    expect(hit?.packet_id).toBe("direct-hit");
+    expect(hit?.summary).toBe("direct packet summary");
+    expect(Array.from(hit?.vector ?? [])).toEqual([1, 0]);
+  });
+
+  it("retrieves recent stored packets in reverse chronological order", async () => {
+    const memory = new TieredMemory();
+    await memory.store(
+      memoryPacket("first", new Float32Array([1, 0])),
+      "first",
+    );
+    await memory.store(
+      memoryPacket("second", new Float32Array([0, 1])),
+      "second",
+    );
+
+    const hits = await memory.retrieveRecent(2);
+
+    expect(hits.map((hit) => hit.packet_id)).toEqual(["second", "first"]);
+  });
+
   it("enforces hot tier LRU capacity", async () => {
     const memory = new TieredMemory({ hotMaxEntries: 1 });
 

@@ -1,0 +1,27 @@
+[
+  {
+    "id": "q1",
+    "question": "What color is the object?",
+    "expectedAnswer": "pink"
+  },
+  {
+    "id": "q2",
+    "question": "What shape is the object?",
+    "expectedAnswer": "circle"
+  },
+  {
+    "id": "q3",
+    "question": "Is the object pink?",
+    "expectedAnswer": "yes"
+  },
+  {
+    "id": "q4",
+    "question": "Describe the object.",
+    "expectedAnswer": "pink circle"
+  },
+  {
+    "id": "q5",
+    "question": "What is in the image?",
+    "expectedAnswer": "pink circle"
+  }
+]

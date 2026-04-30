@@ -1,0 +1,8 @@
+numpy
+pillow
+torch
+transformers
+sentence-transformers
+optimum-intel
+datasets
+tqdm

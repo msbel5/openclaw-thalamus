@@ -1,0 +1,46 @@
+{
+  "id": "thalamus",
+  "name": "Thalamus",
+  "description": "Vector packet routing for OpenClaw agents (Phase 3-ready)",
+  "version": "0.2.0",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "workspaceDim": {
+        "type": "integer",
+        "minimum": 1,
+        "default": 512
+      },
+      "memorySqlitePath": {
+        "type": "string"
+      },
+      "pythonPath": {
+        "type": "string"
+      },
+      "encoderBackend": {
+        "type": "string",
+        "enum": ["auto", "fallback", "hf", "huggingface", "stub"],
+        "default": "auto"
+      },
+      "useTrainedAdapters": {
+        "type": "boolean",
+        "default": true
+      },
+      "ollamaUrl": {
+        "type": "string",
+        "default": "http://localhost:11434"
+      },
+      "ollamaModel": {
+        "type": "string",
+        "default": "phi3:mini"
+      }
+    }
+  },
+  "contracts": {
+    "tools": ["thalamus_encode", "thalamus_route", "thalamus_recall"]
+  },
+  "activation": {
+    "onCapabilities": ["tool"]
+  }
+}

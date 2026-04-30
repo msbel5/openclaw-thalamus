@@ -1,0 +1,33 @@
+services:
+  thalamus:
+    build:
+      context: .
+    platform: ${THALAMUS_PLATFORM:-linux/amd64}
+    environment:
+      HF_HOME: /cache/huggingface
+      HF_HUB_CACHE: /cache/huggingface/hub
+      SENTENCE_TRANSFORMERS_HOME: /cache/huggingface/sentence-transformers
+      TRANSFORMERS_CACHE: /cache/huggingface/transformers
+      THALAMUS_ENCODER_BACKEND: ${THALAMUS_ENCODER_BACKEND:-fallback}
+    volumes:
+      - ./experiments:/app/experiments
+      - ./figures:/app/figures
+      - ${THALAMUS_CACHE_DIR:-./.cache}:/cache
+    command: npm run experiment:run
+
+  thalamus-bot:
+    build:
+      context: .
+    platform: ${THALAMUS_PLATFORM:-linux/amd64}
+    environment:
+      HF_HOME: /cache/huggingface
+      HF_HUB_CACHE: /cache/huggingface/hub
+      SENTENCE_TRANSFORMERS_HOME: /cache/huggingface/sentence-transformers
+      TRANSFORMERS_CACHE: /cache/huggingface/transformers
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      THALAMUS_ENCODER_BACKEND: ${THALAMUS_ENCODER_BACKEND:-fallback}
+    volumes:
+      - ./experiments:/app/experiments
+      - ./figures:/app/figures
+      - ${THALAMUS_CACHE_DIR:-./.cache}:/cache
+    command: npm run telegram:bot

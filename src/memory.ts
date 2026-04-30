@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import { createRequire } from "node:module";
 import type { Database as DatabaseHandle } from "better-sqlite3";
 import type { ThalamusPacket } from "./packet.js";
 import { cosineSimilarity } from "./vector.js";
@@ -23,6 +23,13 @@ interface EpisodeRow {
   packet_id: string;
 }
 
+interface EpisodeStore {
+  insert(ts: number, summary: string, packetId: string): void;
+  latestByPacket(packetId: string): EpisodeRow | undefined;
+  all(): EpisodeRow[];
+  count(): number;
+}
+
 interface VectorEntry {
   packet_id: string;
   vector: Float32Array;
@@ -31,7 +38,7 @@ interface VectorEntry {
 export class TieredMemory {
   private readonly hot = new Map<string, ThalamusPacket>();
   private readonly hotMaxEntries: number;
-  private readonly db: DatabaseHandle;
+  private readonly episodes: EpisodeStore;
   private readonly vectorIndex: VectorEntry[] = [];
 
   constructor(options: TieredMemoryOptions = {}) {
@@ -41,24 +48,12 @@ export class TieredMemory {
       throw new Error("hotMaxEntries must be a positive integer");
     }
 
-    this.db = new Database(options.sqlitePath ?? ":memory:");
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS episodes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ts INTEGER NOT NULL,
-        summary TEXT NOT NULL,
-        packet_id TEXT NOT NULL
-      );
-      CREATE INDEX IF NOT EXISTS episodes_packet_id_idx ON episodes(packet_id);
-      CREATE INDEX IF NOT EXISTS episodes_summary_idx ON episodes(summary);
-    `);
+    this.episodes = createEpisodeStore(options.sqlitePath ?? ":memory:");
   }
 
   store(packet: ThalamusPacket, summary = ""): Promise<void> {
     this.rememberHot(packet);
-    this.db
-      .prepare("INSERT INTO episodes (ts, summary, packet_id) VALUES (?, ?, ?)")
-      .run(packet.timestamp, summary, packet.id);
+    this.episodes.insert(packet.timestamp, summary, packet.id);
     this.vectorIndex.push({
       packet_id: packet.id,
       vector: new Float32Array(packet.vector),
@@ -87,6 +82,26 @@ export class TieredMemory {
     return Promise.resolve(hits);
   }
 
+  retrieveById(packetId: string): Promise<MemoryHit | null> {
+    const row = this.episodes.latestByPacket(packetId);
+
+    if (row === undefined) {
+      return Promise.resolve(null);
+    }
+
+    return Promise.resolve(this.toMemoryHit(row, 1));
+  }
+
+  retrieveRecent(k: number): Promise<MemoryHit[]> {
+    const limit = normalizeLimit(k);
+    const hits = this.allEpisodes()
+      .slice(0, limit)
+      .map((row) => this.toMemoryHit(row, 1))
+      .filter((hit): hit is MemoryHit => hit !== null);
+
+    return Promise.resolve(hits);
+  }
+
   retrieveByVector(vec: Float32Array, k: number): Promise<MemoryHit[]> {
     const limit = normalizeLimit(k);
     const episodeByPacket = new Map(
@@ -110,13 +125,9 @@ export class TieredMemory {
   }
 
   size(): { hot: number; episodic: number; vector: number } {
-    const row = this.db
-      .prepare("SELECT COUNT(*) AS count FROM episodes")
-      .get() as { count: number };
-
     return {
       hot: this.hot.size,
-      episodic: row.count,
+      episodic: this.episodes.count(),
       vector: this.vectorIndex.length,
     };
   }
@@ -139,11 +150,7 @@ export class TieredMemory {
   }
 
   private allEpisodes(): EpisodeRow[] {
-    return this.db
-      .prepare(
-        "SELECT id, ts, summary, packet_id FROM episodes ORDER BY ts DESC, id DESC",
-      )
-      .all() as EpisodeRow[];
+    return this.episodes.all();
   }
 
   private toMemoryHit(row: EpisodeRow, score: number): MemoryHit | null {
@@ -160,6 +167,137 @@ export class TieredMemory {
       timestamp: row.ts,
     };
   }
+}
+
+type DatabaseConstructor = new (path: string) => DatabaseHandle;
+
+class SqliteEpisodeStore implements EpisodeStore {
+  private readonly db: DatabaseHandle;
+
+  constructor(sqlitePath: string, Database: DatabaseConstructor) {
+    this.db = new Database(sqlitePath);
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS episodes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ts INTEGER NOT NULL,
+        summary TEXT NOT NULL,
+        packet_id TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS episodes_packet_id_idx ON episodes(packet_id);
+      CREATE INDEX IF NOT EXISTS episodes_summary_idx ON episodes(summary);
+    `);
+  }
+
+  insert(ts: number, summary: string, packetId: string): void {
+    this.db
+      .prepare("INSERT INTO episodes (ts, summary, packet_id) VALUES (?, ?, ?)")
+      .run(ts, summary, packetId);
+  }
+
+  latestByPacket(packetId: string): EpisodeRow | undefined {
+    return this.db
+      .prepare(
+        "SELECT id, ts, summary, packet_id FROM episodes WHERE packet_id = ? ORDER BY ts DESC, id DESC LIMIT 1",
+      )
+      .get(packetId) as EpisodeRow | undefined;
+  }
+
+  all(): EpisodeRow[] {
+    return this.db
+      .prepare(
+        "SELECT id, ts, summary, packet_id FROM episodes ORDER BY ts DESC, id DESC",
+      )
+      .all() as EpisodeRow[];
+  }
+
+  count(): number {
+    const row = this.db
+      .prepare("SELECT COUNT(*) AS count FROM episodes")
+      .get() as { count: number };
+
+    return row.count;
+  }
+}
+
+class InMemoryEpisodeStore implements EpisodeStore {
+  private readonly rows: EpisodeRow[] = [];
+  private nextId = 1;
+
+  insert(ts: number, summary: string, packetId: string): void {
+    this.rows.push({
+      id: this.nextId,
+      ts,
+      summary,
+      packet_id: packetId,
+    });
+    this.nextId += 1;
+  }
+
+  latestByPacket(packetId: string): EpisodeRow | undefined {
+    return this.all().find((row) => row.packet_id === packetId);
+  }
+
+  all(): EpisodeRow[] {
+    return [...this.rows].sort((a, b) => b.ts - a.ts || b.id - a.id);
+  }
+
+  count(): number {
+    return this.rows.length;
+  }
+}
+
+function createEpisodeStore(sqlitePath: string): EpisodeStore {
+  const Database = loadBetterSqlite();
+
+  if (Database !== null) {
+    try {
+      return new SqliteEpisodeStore(sqlitePath, Database);
+    } catch {
+      // Fall through to the in-memory store when the native binding is present
+      // but built for a different Node ABI.
+    }
+  }
+
+  process.emitWarning(
+    "better-sqlite3 is unavailable; TieredMemory is using an in-memory episodic store.",
+    { code: "THALAMUS_SQLITE_FALLBACK" },
+  );
+
+  return new InMemoryEpisodeStore();
+}
+
+function loadBetterSqlite(): DatabaseConstructor | null {
+  const require = createRequire(import.meta.url);
+
+  try {
+    const imported = require("better-sqlite3") as unknown;
+    if (isDatabaseConstructor(imported)) {
+      return imported;
+    }
+
+    if (isModuleWithDefaultDatabase(imported)) {
+      return imported.default;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function isDatabaseConstructor(value: unknown): value is DatabaseConstructor {
+  return typeof value === "function";
+}
+
+function isModuleWithDefaultDatabase(
+  value: unknown,
+): value is { default: DatabaseConstructor } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "default" in value &&
+    isDatabaseConstructor(value.default)
+  );
 }
 
 function clonePacket(packet: ThalamusPacket): ThalamusPacket {
