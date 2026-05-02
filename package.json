@@ -1,0 +1,26 @@
+{
+  "name": "openclaw-thalamus",
+  "version": "0.1.0",
+  "description": "Observable Thalamus router for Alcyone: Hailo health, atom memory packets, and MCP tools.",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "openclaw-thalamus-mcp": "./src/server.js",
+    "openclaw-thalamus-dashboard": "./src/dashboard.js",
+    "openclaw-thalamus": "./src/cli.js"
+  },
+  "scripts": {
+    "health": "node src/cli.js health",
+    "context": "node src/cli.js context",
+    "benchmark": "node src/cli.js benchmark",
+    "dashboard": "node src/dashboard.js",
+    "mcp": "node src/server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.21.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

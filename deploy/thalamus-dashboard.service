@@ -1,0 +1,16 @@
+[Unit]
+Description=Alcyone Thalamus Dashboard
+After=network-online.target openclaw-gateway.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/msbel/projects-alcyone/openclaw-thalamus
+Environment=NODE_ENV=production
+Environment=THALAMUS_HOST=127.0.0.1
+Environment=THALAMUS_PORT=18888
+ExecStart=/usr/bin/node /home/msbel/projects-alcyone/openclaw-thalamus/src/dashboard.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
