@@ -11,12 +11,13 @@ import { getHealth } from "./health.js";
 import { runLocalInference } from "./local_llm.js";
 import { resolveRoute, routeTask } from "./router.js";
 import { cleanupPackets, promotePacket } from "./packet_store.js";
+import { ingest } from "./ingest.js";
 import { cluster, compare, embed, search } from "./vector_store.js";
 
 const server = new Server(
   {
     name: "openclaw-thalamus",
-    version: "0.2.0"
+    version: "0.2.1"
   },
   {
     capabilities: {
@@ -87,6 +88,24 @@ const tools = [
     }
   },
   {
+    name: "thalamus_ingest",
+    description:
+      "Source-agnostic multimodal ingest. Stores text/audio/image/video vectors and returns packet_id + resolver_key for agent handoff.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        source: { type: "string", default: "manual" },
+        intent: { type: "string", default: "ingest" },
+        text: { type: "string" },
+        audio_path: { type: "string" },
+        image_path: { type: "string" },
+        video_path: { type: "string" },
+        metadata: { type: "object" },
+        parent_packet_id: { type: "string" }
+      }
+    }
+  },
+  {
     name: "thalamus_search",
     description:
       "Search vector store by raw vector, vector_id, or text fallback. Use raw vector for agent-to-agent handoff whenever available.",
@@ -100,7 +119,8 @@ const tools = [
         namespace: { type: "string" },
         k: { type: "number", default: 5 },
         threshold: { type: "number" },
-        source_namespace: { type: "string" }
+        source_namespace: { type: "string" },
+        source_filter: { type: "array", items: { type: "string" } }
       }
     }
   },
@@ -256,6 +276,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     result = await resolveRoute(args);
   } else if (request.params.name === "thalamus_embed") {
     result = await embed(args);
+  } else if (request.params.name === "thalamus_ingest") {
+    result = await ingest(args);
   } else if (request.params.name === "thalamus_search") {
     result = await search(args);
   } else if (request.params.name === "thalamus_compare") {

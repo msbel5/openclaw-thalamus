@@ -33,19 +33,33 @@ export const HAILO_ENCODERS = {
   clip_image: "/usr/local/hailo/resources/models/hailo10h/clip_vit_b_32_image_encoder.hef",
   clip_text: "/usr/local/hailo/resources/models/hailo10h/clip_vit_b_32_text_encoder.hef"
 };
+export const VIDEO_FRAME_FPS = Number(process.env.THALAMUS_VIDEO_FPS || "1");
+export const VIDEO_MAX_FRAMES = Number(process.env.THALAMUS_VIDEO_MAX_FRAMES || "30");
+export const INGEST_SOURCES = {
+  "telegram:msbel": "Mami via Telegram",
+  "telegram:*": "Telegram users",
+  "agent:liaison": "Liaison agent",
+  "agent:captain": "Captain agent",
+  "agent:builder": "Builder agent",
+  "agent:inspector": "Inspector agent",
+  "agent:archivist": "Archivist agent",
+  cli: "CLI invocation",
+  "watch:*": "File watchers",
+  manual: "Manual or unknown"
+};
 
 export const PACKET_TTL_DAYS = Number(process.env.THALAMUS_PACKET_TTL_DAYS || "30");
 export const PACKET_MAX_COUNT = Number(process.env.THALAMUS_PACKET_MAX_COUNT || "5000");
 
 export const VECTOR_NAMESPACES = {
-  "atoms.code": { dim: 384, side: "text", model: "minilm-l6", threshold: 0.85 },
-  "atoms.audit": { dim: 384, side: "text", model: "minilm-l6", threshold: 0.85 },
-  "atoms.plan": { dim: 384, side: "text", model: "minilm-l6", threshold: 0.85 },
-  "atoms.memory": { dim: 384, side: "text", model: "minilm-l6", threshold: 0.92 },
+  "atoms.code": { dim: 512, side: "text", model: "distiluse-base-multilingual-cased-v2", threshold: 0.85 },
+  "atoms.audit": { dim: 512, side: "text", model: "distiluse-base-multilingual-cased-v2", threshold: 0.85 },
+  "atoms.plan": { dim: 512, side: "text", model: "distiluse-base-multilingual-cased-v2", threshold: 0.85 },
+  "atoms.memory": { dim: 512, side: "text", model: "distiluse-base-multilingual-cased-v2", threshold: 0.92 },
   "atoms.audio.raw": { dim: 512, side: "audio", model: "hailo-whisper-encoder", threshold: 0.85 },
-  "atoms.audio.text": { dim: 384, side: "audio", model: "whisper-text-minilm-l6", threshold: 0.85 },
+  "atoms.audio.text": { dim: 512, side: "audio", model: "distiluse-base-multilingual-cased-v2", threshold: 0.85 },
   "atoms.image.raw": { dim: 512, side: "image", model: "hailo-clip-image", threshold: 0.85 },
-  "atoms.image.text": { dim: 384, side: "image", model: "vlm-ocr-text-minilm-l6", threshold: 0.85 },
+  "atoms.image.text": { dim: 512, side: "image", model: "distiluse-base-multilingual-cased-v2", threshold: 0.85 },
   "atoms.crossmodal": { dim: 512, side: "crossmodal", model: "hailo-clip-shared", threshold: 0.85 }
 };
 

@@ -5,10 +5,12 @@ import { runBenchmark } from "./benchmark.js";
 import { buildContextPacket } from "./context.js";
 import { REPORT_DIR, STATE_DIR } from "./config.js";
 import { getHealth } from "./health.js";
+import { ingest } from "./ingest.js";
+import { runLocalInference } from "./local_llm.js";
 import { cleanupPackets } from "./packet_store.js";
 import { resolveRoute, routeTask } from "./router.js";
 import { ensureDirs, writeJson } from "./system.js";
-import { cluster, compare, embed, search } from "./vector_store.js";
+import { cluster, compare, embed, initNamespaces, search } from "./vector_store.js";
 
 function hasFlag(name) {
   return process.argv.includes(name);
@@ -18,6 +20,19 @@ function argAfter(name, fallback = null) {
   const i = process.argv.indexOf(name);
   if (i >= 0 && process.argv[i + 1]) return process.argv[i + 1];
   return fallback;
+}
+
+function positionalArgs(start = 3) {
+  const out = [];
+  for (let i = start; i < process.argv.length; i += 1) {
+    const arg = process.argv[i];
+    if (arg.startsWith("--")) {
+      if (process.argv[i + 1] && !process.argv[i + 1].startsWith("--")) i += 1;
+    } else {
+      out.push(arg);
+    }
+  }
+  return out;
 }
 
 async function inventory() {
@@ -52,7 +67,7 @@ async function main() {
     return;
   }
   if (command === "context") {
-    const task = process.argv.slice(3).filter((arg) => !arg.startsWith("--")).join(" ");
+    const task = positionalArgs().join(" ");
     if (!task) throw new Error('Usage: node src/cli.js context "task summary"');
     const packet = await buildContextPacket(task, {
       noRemote: hasFlag("--no-remote"),
@@ -63,7 +78,7 @@ async function main() {
     return;
   }
   if (command === "route") {
-    const task = process.argv.slice(3).filter((arg) => !arg.startsWith("--")).join(" ");
+    const task = positionalArgs().join(" ");
     if (!task) throw new Error('Usage: node src/cli.js route "task summary"');
     const routed = await routeTask({
       task,
@@ -82,7 +97,7 @@ async function main() {
     return;
   }
   if (command === "embed") {
-    const text = argAfter("--text") || process.argv.slice(3).filter((arg) => !arg.startsWith("--")).join(" ");
+    const text = argAfter("--text") || positionalArgs().join(" ");
     const result = await embed({
       text,
       audio_path: argAfter("--audio"),
@@ -93,8 +108,22 @@ async function main() {
     console.log(JSON.stringify(result, null, 2));
     return;
   }
+  if (command === "ingest") {
+    const text = argAfter("--text") || positionalArgs().join(" ");
+    const result = await ingest({
+      text: text || undefined,
+      audio_path: argAfter("--audio"),
+      image_path: argAfter("--image"),
+      video_path: argAfter("--video"),
+      source: argAfter("--source", "cli"),
+      intent: argAfter("--intent", "manual-ingest"),
+      metadata: argAfter("--metadata") ? JSON.parse(argAfter("--metadata")) : {}
+    });
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
   if (command === "search") {
-    const text = argAfter("--text") || process.argv.slice(3).filter((arg) => !arg.startsWith("--")).join(" ");
+    const text = argAfter("--text") || positionalArgs().join(" ");
     const result = await search({
       text,
       namespace: argAfter("--namespace", "atoms.memory"),
@@ -102,6 +131,29 @@ async function main() {
       threshold: Number(argAfter("--threshold", "0"))
     });
     console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  if (command === "init-namespaces") {
+    console.log(JSON.stringify(await initNamespaces({ migrate: !hasFlag("--no-migrate") }), null, 2));
+    return;
+  }
+  if (command === "heartbeat-canary") {
+    const started = Date.now();
+    const local = await runLocalInference({
+      prompt: "Tek cümle Türkçe heartbeat canary: gerçek ölçüm yapıldığını ve uydurma yapmadığını söyle.",
+      max_tokens: 40,
+      temperature: 0.1
+    });
+    console.log(JSON.stringify({
+      ok: local.ok,
+      sent: false,
+      model: local.model,
+      on_device: local.on_device,
+      latency_ms: Date.now() - started,
+      text: local.text || null,
+      error: local.error || null,
+      note: "Disabled cron canary verified local inference only; Telegram send remains disabled until Mami enables the job."
+    }, null, 2));
     return;
   }
   if (command === "compare") {
@@ -142,7 +194,10 @@ Usage:
   node src/cli.js route "task summary" [--no-cache] [--namespace atoms.code]
   node src/cli.js resolve --packet pkt_... --key sha256:...
   node src/cli.js embed "text" [--store] [--audio path] [--image path] [--namespace atoms.memory]
+  node src/cli.js ingest [--text "text"] [--audio path] [--image path] [--video path] [--source cli] [--intent reference]
   node src/cli.js search "text" --namespace atoms.memory [--top 5] [--threshold 0.85]
+  node src/cli.js init-namespaces [--no-migrate]
+  node src/cli.js heartbeat-canary [--store]
   node src/cli.js compare --a "[...]" --b "[...]"
   node src/cli.js cluster [--threshold 0.85]
   node src/cli.js context "task summary" [--no-remote] [--top 5] [--budget 4000]

@@ -1,0 +1,2 @@
+"""Image ingestion pipeline."""
+
