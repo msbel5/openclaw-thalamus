@@ -188,10 +188,12 @@ def main() -> int:
             row["model"] = res["model"]
             row["degraded"] = False
             row["confidence"] = max(float(row.get("confidence", 0.0)), 0.85)
+            old_top_model = row.get("model")
             row.setdefault("metadata", {})
             row["metadata"]["migrated_at"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
             row["metadata"]["migrated_via"] = "encoder-daemon"
-            row["metadata"]["pre_migration_model"] = row.get("metadata", {}).get("pre_migration_model", row.get("metadata", {}).get("model"))
+            # PRD-D fix: capture top-level model BEFORE mutation, not nested metadata.model
+            row["metadata"]["pre_migration_model"] = row["metadata"].get("pre_migration_model", old_top_model)
             migrated += 1
             print(f"  + row[{idx}] OK   ns={ns} dim={len(res['vector'])} model={res['model']} encode={res.get('encode_ms')}ms wall={wall_ms}ms")
 

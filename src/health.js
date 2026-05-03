@@ -164,17 +164,29 @@ async function getHailoPackages() {
   return { ok: dpkg.ok, packages };
 }
 
+// PRD-H: per-check timeout wrapper. On timeout, returns a partial-result stub
+// instead of blocking /api/health for tens of seconds.
+function withTimeout(promise, ms, label) {
+  return Promise.race([
+    promise.catch((err) => ({ ok: false, error: redact(err?.message || String(err)), label })),
+    new Promise((resolve) =>
+      setTimeout(() => resolve({ ok: false, timeout: true, timeout_ms: ms, label }), ms)
+    )
+  ]);
+}
+
 export async function getHealth() {
+  const HARD = Number(process.env.THALAMUS_HEALTH_TIMEOUT_MS || "2500");
   const [hailo, local_llm, openclaw, trading, atoms, disk, packages, packets, vectors] = await Promise.all([
-    getHailoHealth(),
-    getLocalLlmStatus(),
-    getOpenClawHealth(),
-    getServiceState("trading-bot.service"),
-    getAtomStats(),
-    getDiskHealth(),
-    getHailoPackages(),
-    getPacketStats(),
-    getVectorStats()
+    withTimeout(getHailoHealth(), HARD, "hailo"),
+    withTimeout(getLocalLlmStatus(), HARD, "local_llm"),
+    withTimeout(getOpenClawHealth(), HARD, "openclaw"),
+    withTimeout(getServiceState("trading-bot.service"), HARD, "trading-bot"),
+    withTimeout(getAtomStats(), HARD, "atoms"),
+    withTimeout(getDiskHealth(), HARD, "disk"),
+    withTimeout(getHailoPackages(), HARD, "packages"),
+    withTimeout(getPacketStats(), HARD, "packets"),
+    withTimeout(getVectorStats(), HARD, "vectors")
   ]);
   return {
     generated_at: new Date().toISOString(),
