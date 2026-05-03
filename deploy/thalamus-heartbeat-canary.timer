@@ -1,0 +1,10 @@
+[Unit]
+Description=Alcyone Thalamus deterministic heartbeat canary timer (disabled by default)
+
+[Timer]
+OnCalendar=*:0/30
+Persistent=false
+Unit=thalamus-heartbeat-canary.service
+
+[Install]
+WantedBy=timers.target

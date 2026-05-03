@@ -1,4 +1,5 @@
 import {
+  HAILO_LOCAL_KEEP_ALIVE,
   HAILO_LOCAL_MODEL,
   HAILO_OLLAMA_BASE_URL
 } from "./config.js";
@@ -69,6 +70,8 @@ export async function runLocalInference(input = {}) {
   const model = String(input.model || HAILO_LOCAL_MODEL);
   const maxTokens = Number(input.max_tokens || input.maxTokens || 80);
   const temperature = Number(input.temperature ?? 0.2);
+  const keepAlive = String(input.keep_alive ?? input.keepAlive ?? HAILO_LOCAL_KEEP_ALIVE);
+  const unloadAfter = keepAlive === "0s" || keepAlive === "0";
   const system =
     input.system ||
     "You are Alcyone's local thalamus layer. Answer briefly, do not invent proof, and say when a task needs the cloud crew.";
@@ -119,6 +122,19 @@ export async function runLocalInference(input = {}) {
   });
 
   const text = response.json?.message?.content || response.json?.response || "";
+  let unload = null;
+  if (response.ok && unloadAfter) {
+    unload = await requestJson("/api/generate", {
+      method: "POST",
+      timeout: 30_000,
+      body: {
+        model,
+        prompt: "",
+        stream: false,
+        keep_alive: 0
+      }
+    });
+  }
   return {
     ok: response.ok && Boolean(text),
     available: response.ok,
@@ -126,6 +142,9 @@ export async function runLocalInference(input = {}) {
     provider: "hailo-ollama",
     model,
     on_device: response.ok,
+    keep_alive: keepAlive,
+    unload_after: unloadAfter,
+    unload: unload ? { ok: unload.ok, status: unload.status, latency_ms: unload.latency_ms, error: unload.ok ? null : unload.json?.error || unload.json } : null,
     text: redact(text),
     tokens_used: response.json?.eval_count || null,
     latency_ms: Date.now() - started,

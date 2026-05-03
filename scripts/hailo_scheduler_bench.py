@@ -20,6 +20,7 @@ LOG_PATH = LOG_DIR / f"scheduler_bench-{int(time.time())}.log"
 HEF_PATH = Path(os.environ.get("THALAMUS_CLIP_IMAGE_HEF", "/usr/local/hailo/resources/models/hailo10h/clip_vit_b_32_image_encoder.hef"))
 MODEL = os.environ.get("THALAMUS_BENCH_LLM_MODEL", "qwen2.5-instruct:1.5b")
 BASE_URL = os.environ.get("HAILO_OLLAMA_BASE_URL", "http://127.0.0.1:8000")
+UNLOAD_FIRST = "--unload-first" in sys.argv or os.environ.get("THALAMUS_BENCH_UNLOAD_FIRST") == "1"
 
 
 def log(msg: str) -> None:
@@ -44,6 +45,36 @@ def get_mem_available_mb() -> int | None:
     except Exception:
         return None
     return None
+
+
+def http_json(path: str, payload: dict | None = None, timeout: int = 10) -> dict:
+    data = None if payload is None else json.dumps(payload).encode()
+    req = urllib.request.Request(
+        f"{BASE_URL}{path}",
+        data=data,
+        headers={"content-type": "application/json"},
+        method="POST" if payload is not None else "GET",
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        body = r.read().decode("utf-8", "replace")
+        return {"status": r.status, "json": json.loads(body) if body else {}}
+
+
+def list_loaded_models() -> list[str]:
+    try:
+        data = http_json("/api/ps", timeout=5)["json"]
+        return [item.get("model") or item.get("name") for item in data.get("models", [])]
+    except Exception as e:
+        return [f"ps_error:{type(e).__name__}:{e}"]
+
+
+def unload_model() -> dict:
+    # Ollama-compatible unload request. Some Hailo-Ollama builds accept this on
+    # /api/generate even when /api/chat is the normal inference path.
+    try:
+        return http_json("/api/generate", {"model": MODEL, "prompt": "", "stream": False, "keep_alive": 0}, timeout=30)
+    except Exception as e:
+        return {"status": None, "json": {"error": f"{type(e).__name__}: {e}"}}
 
 
 class CachedClipImage:
@@ -99,7 +130,14 @@ def llm_call(i: int) -> dict:
 
 def main() -> int:
     log(f"bench_log={LOG_PATH}")
+    log(f"mode={'unload-first' if UNLOAD_FIRST else 'loaded'} model={MODEL}")
     log(f"start temp={get_temp_c()}C mem={get_mem_available_mb()}MB hef={HEF_PATH}")
+    log(f"api_ps_before={list_loaded_models()}")
+    if UNLOAD_FIRST:
+        unload = unload_model()
+        log(f"unload_status={unload.get('status')} unload_body={json.dumps(unload.get('json'), ensure_ascii=False)[:500]}")
+        time.sleep(2)
+        log(f"api_ps_after_unload={list_loaded_models()}")
     if (get_mem_available_mb() or 0) < 1300:
         log("FAIL: MemAvailable below 1300MB guard")
         return 2
@@ -133,7 +171,7 @@ def main() -> int:
         all_text = "\n".join(errors)
         no_device_errors = "HAILO_OUT_OF_PHYSICAL_DEVICES" not in all_text
         ok = not errors and no_device_errors and len(embed_latencies) == 5 and all(x < 5000 for x in embed_latencies)
-        summary = {"ok": ok, "log": str(LOG_PATH), "embed_latencies_ms": embed_latencies, "llm": llm, "errors": errors, "temp_c": get_temp_c(), "mem_available_mb": get_mem_available_mb()}
+        summary = {"ok": ok, "mode": "unload-first" if UNLOAD_FIRST else "loaded", "log": str(LOG_PATH), "embed_latencies_ms": embed_latencies, "llm": llm, "errors": errors, "api_ps_after": list_loaded_models(), "temp_c": get_temp_c(), "mem_available_mb": get_mem_available_mb()}
         log("SUMMARY " + json.dumps(summary, ensure_ascii=False))
         return 0 if ok else 1
     except Exception:

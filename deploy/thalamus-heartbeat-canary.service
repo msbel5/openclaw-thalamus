@@ -1,0 +1,12 @@
+[Unit]
+Description=Alcyone Thalamus deterministic heartbeat canary (single run)
+After=network-online.target thalamus-dashboard.service hailo-ollama.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/msbel/projects-alcyone/openclaw-thalamus
+Environment=THALAMUS_CANARY_CHAT_ID=1087797886
+Environment=THALAMUS_CANARY_KEEP_ALIVE=0s
+ExecStart=/home/msbel/projects-alcyone/openclaw-thalamus/scripts/run_heartbeat_canary.sh
+StandardOutput=append:/home/msbel/.openclaw/thalamus/state/heartbeat_canary.stdout.log
+StandardError=append:/home/msbel/.openclaw/thalamus/state/heartbeat_canary.stderr.log

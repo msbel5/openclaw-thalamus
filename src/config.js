@@ -26,6 +26,8 @@ export const HAILO_OLLAMA_BASE_URL =
   process.env.HAILO_OLLAMA_BASE_URL || "http://127.0.0.1:8000";
 export const HAILO_LOCAL_MODEL =
   process.env.THALAMUS_LOCAL_MODEL || "qwen2.5-instruct:1.5b";
+export const HAILO_LOCAL_KEEP_ALIVE =
+  process.env.THALAMUS_LOCAL_KEEP_ALIVE || "0s";
 export const HAILO_APPS_DIR = path.join(HOME, "projects-alcyone", "hailo-apps");
 export const HAILO_APPS_PYTHON = path.join(HAILO_APPS_DIR, "venv_hailo_apps", "bin", "python");
 export const HAILO_ENCODERS = {

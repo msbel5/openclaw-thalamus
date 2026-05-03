@@ -251,6 +251,7 @@ async function main() {
       prompt: "Sadece CANARY_OK yaz. Ölçüm raporunu sistem deterministik oluşturacak; uydurma yapma.",
       max_tokens: 8,
       temperature: 0,
+      keep_alive: argAfter("--keep-alive", "0s"),
       timeout_ms: 30_000
     });
     const message = buildHeartbeatMessage(measurements, local);
@@ -263,6 +264,8 @@ async function main() {
       sent: Boolean(hasFlag("--send") && send?.ok),
       provider: local.provider || "hailo-ollama",
       model: local.model,
+      keep_alive: local.keep_alive,
+      unload: local.unload,
       on_device: local.on_device,
       latency_ms: Date.now() - started,
       measurements,
@@ -314,7 +317,7 @@ Usage:
   node src/cli.js ingest [--text "text"] [--audio path] [--image path] [--video path] [--source cli] [--intent reference]
   node src/cli.js search "text" --namespace atoms.memory [--top 5] [--threshold 0.85]
   node src/cli.js init-namespaces [--no-migrate]
-  node src/cli.js heartbeat-canary [--store]
+  node src/cli.js heartbeat-canary [--send] [--chat 1087797886] [--keep-alive 0s]
   node src/cli.js compare --a "[...]" --b "[...]"
   node src/cli.js cluster [--threshold 0.85]
   node src/cli.js context "task summary" [--no-remote] [--top 5] [--budget 4000]
