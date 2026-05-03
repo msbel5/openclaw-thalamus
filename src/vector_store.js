@@ -10,10 +10,23 @@ import {
   VECTOR_STORE_DIR
 } from "./config.js";
 import { appendJsonl, ensureDirs, pathExists, readJsonSafe, runFile, sha256, stableId, writeJson } from "./system.js";
-import { embedTextViaDaemon, isAvailable as isEncoderDaemonAvailable } from "./encoder_client.js";
+import { call as encoderDaemonCall, embedTextViaDaemon, isAvailable as isEncoderDaemonAvailable } from "./encoder_client.js";
 
 const DEFAULT_TEXT_NAMESPACE = "atoms.memory";
 const ENCODER_DAEMON_DISABLED = process.env.THALAMUS_ENCODER_DAEMON_DISABLED === "1";
+
+async function tryDaemonHailo(method, params, timeoutMs) {
+  if (ENCODER_DAEMON_DISABLED) return null;
+  try {
+    if (!(await isEncoderDaemonAvailable(800))) return null;
+    const r = await encoderDaemonCall(method, params, { timeoutMs });
+    if (!r || !r.ok || !Array.isArray(r.vector)) return null;
+    return r;
+  } catch (err) {
+    console.warn(`[thalamus] daemon ${method} failed, falling back to subprocess: ${err.message}`);
+    return null;
+  }
+}
 
 function namespaceFile(namespace) {
   return path.join(VECTOR_STORE_DIR, `${namespace.replace(/[^a-z0-9_.-]/gi, "_")}.json`);
@@ -190,6 +203,18 @@ async function semanticText(text) {
 }
 
 async function clipText(text) {
+  const dr = await tryDaemonHailo("embed_clip_text", { text }, 60_000);
+  if (dr) {
+    return {
+      ok: true,
+      vector: l2Normalize(dr.vector.map(Number)),
+      dim: Number(dr.vector_dim || dr.vector.length),
+      model: dr.model || "hailo-clip-vit-b-32-text",
+      degraded: false,
+      latency_ms: dr.encode_ms,
+      proof: { source: dr.source || "encoder-daemon-hailo", rss_mb: dr.rss_mb }
+    };
+  }
   const out = await runEncoder("thalamus.vector.embed_text_clip", [text], { timeout: 60_000 });
   if (out.ok) return out;
   console.warn(`[thalamus] CLIP text encoder degraded: ${out.error}`);
@@ -204,6 +229,18 @@ async function clipText(text) {
 }
 
 async function audioRaw(file) {
+  const dr = await tryDaemonHailo("embed_audio_whisper", { audio_path: file }, 180_000);
+  if (dr) {
+    return {
+      ok: true,
+      vector: l2Normalize(dr.vector.map(Number)),
+      dim: Number(dr.vector_dim || dr.vector.length),
+      model: dr.model || "hailo-whisper-base-encoder-10s",
+      degraded: false,
+      latency_ms: dr.encode_ms,
+      proof: { source: dr.source || "encoder-daemon-hailo", rss_mb: dr.rss_mb, chunks: dr.chunks }
+    };
+  }
   const out = await runEncoder("thalamus.vector.embed_audio_whisper", [file], { timeout: 120_000 });
   if (out.ok) return out;
   console.warn(`[thalamus] Whisper encoder degraded: ${out.error}`);
@@ -219,6 +256,18 @@ async function audioRaw(file) {
 }
 
 async function imageRaw(file) {
+  const dr = await tryDaemonHailo("embed_clip_image", { image_path: file }, 60_000);
+  if (dr) {
+    return {
+      ok: true,
+      vector: l2Normalize(dr.vector.map(Number)),
+      dim: Number(dr.vector_dim || dr.vector.length),
+      model: dr.model || "hailo-clip-vit-b-32-image",
+      degraded: false,
+      latency_ms: dr.encode_ms,
+      proof: { source: dr.source || "encoder-daemon-hailo", rss_mb: dr.rss_mb }
+    };
+  }
   const out = await runEncoder("thalamus.vector.embed_image_clip", [file], { timeout: 60_000 });
   if (out.ok) return out;
   console.warn(`[thalamus] CLIP image encoder degraded: ${out.error}`);

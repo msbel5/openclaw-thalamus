@@ -47,6 +47,9 @@ LOG_PATH = HOME / ".openclaw" / "thalamus" / "state" / "encoder_server.log"
 START_TS = time.time()
 LOADED_MODELS: Dict[str, Dict[str, Any]] = {}
 DISTILUSE_MODEL_NAME = "distiluse-base-multilingual-cased-v2"
+CLIP_TEXT_NAME = "hailo-clip-vit-b-32-text"
+CLIP_IMAGE_NAME = "hailo-clip-vit-b-32-image"
+WHISPER_AUDIO_NAME = "hailo-whisper-base-encoder-10s"
 
 
 def log(msg: str) -> None:
@@ -117,6 +120,149 @@ def handle_embed_text(params: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+# ---------------------------------------------------------------------------
+# Hailo HEF encoders (CLIP-text, CLIP-image, Whisper-encoder)
+#
+# Each call still opens a fresh VDevice (existing pattern in
+# thalamus.vector._hailo_runtime). The win vs subprocess is ~1-2s saved
+# Python interpreter startup per call. VDevice/HEF cold-load happens per call.
+# True warm caching of VDevice would conflict with hailo-ollama on /dev/hailo0
+# and is deferred to v0.4 with a Hailo scheduling layer.
+# ---------------------------------------------------------------------------
+
+import numpy as np  # heavy but already loaded by sentence-transformers
+
+def _ensure_runtime_module():
+    """Add ~/projects-alcyone/openclaw-thalamus to sys.path on first call."""
+    repo = os.environ.get("THALAMUS_REPO", str(HOME / "projects-alcyone" / "openclaw-thalamus"))
+    if repo not in sys.path:
+        sys.path.insert(0, repo)
+    try:
+        from thalamus.vector import _hailo_runtime  # noqa: F401
+    except ImportError as e:
+        raise RuntimeError(f"failed to import thalamus._hailo_runtime: {e}")
+
+
+def handle_embed_clip_text(params: Dict[str, Any]) -> Dict[str, Any]:
+    text = str(params.get("text", "")).strip()
+    if not text:
+        return {"ok": False, "error": "embed_clip_text requires non-empty 'text'"}
+    t0 = time.time()
+    try:
+        _ensure_runtime_module()
+        from thalamus.vector._hailo_runtime import HAILO10H_MODEL_DIR, configure_paths, l2_normalize
+        configure_paths()
+        from hailo_apps.python.pipeline_apps.clip.clip_text_utils import (
+            DEFAULT_TEXT_PROJECTION_PATH, run_text_encoder_inference,
+        )
+        model_path = HAILO10H_MODEL_DIR / "clip_vit_b_32_text_encoder.hef"
+        vec = run_text_encoder_inference(
+            text, str(model_path),
+            text_projection_path=DEFAULT_TEXT_PROJECTION_PATH,
+            timeout_ms=10000,
+        )[0]
+        vec = l2_normalize(vec)
+        encode_ms = (time.time() - t0) * 1000
+        # Record load only first time (this isn't a true cache; it's a marker)
+        if CLIP_TEXT_NAME not in LOADED_MODELS:
+            LOADED_MODELS[CLIP_TEXT_NAME] = {
+                "kind": "text-clip", "loaded_at": time.time(),
+                "load_ms": encode_ms, "dim": 512, "instance": None,
+            }
+        return {
+            "ok": True, "vector_dim": int(vec.shape[0]), "vector": vec.tolist(),
+            "model": CLIP_TEXT_NAME, "degraded": False,
+            "encode_ms": round(encode_ms, 2), "rss_mb": round(get_rss_mb(), 1),
+            "source": "encoder-daemon-hailo",
+        }
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "degraded": True,
+                "encode_ms": round((time.time() - t0) * 1000, 2)}
+
+
+def handle_embed_clip_image(params: Dict[str, Any]) -> Dict[str, Any]:
+    image_path = str(params.get("image_path", "")).strip()
+    if not image_path or not Path(image_path).exists():
+        return {"ok": False, "error": f"image_path missing or not found: {image_path!r}"}
+    t0 = time.time()
+    try:
+        _ensure_runtime_module()
+        from thalamus.vector._hailo_runtime import (
+            HAILO10H_MODEL_DIR, configure_paths, first_output, l2_normalize, run_hailo_single,
+        )
+        from PIL import Image, ImageOps
+        configure_paths()
+        model_path = HAILO10H_MODEL_DIR / "clip_vit_b_32_image_encoder.hef"
+        img = Image.open(image_path).convert("RGB")
+        img = ImageOps.fit(img, (224, 224), method=Image.Resampling.BICUBIC, centering=(0.5, 0.5))
+        arr = np.ascontiguousarray(np.asarray(img, dtype=np.uint8)[None, ...].copy())
+        outputs = run_hailo_single(str(model_path), arr, input_type="UINT8", output_type="FLOAT32")
+        vec = l2_normalize(first_output(outputs))
+        encode_ms = (time.time() - t0) * 1000
+        if CLIP_IMAGE_NAME not in LOADED_MODELS:
+            LOADED_MODELS[CLIP_IMAGE_NAME] = {
+                "kind": "image-clip", "loaded_at": time.time(),
+                "load_ms": encode_ms, "dim": 512, "instance": None,
+            }
+        return {
+            "ok": True, "vector_dim": int(vec.shape[0]), "vector": vec.tolist(),
+            "model": CLIP_IMAGE_NAME, "degraded": False,
+            "encode_ms": round(encode_ms, 2), "rss_mb": round(get_rss_mb(), 1),
+            "source": "encoder-daemon-hailo",
+        }
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "degraded": True,
+                "encode_ms": round((time.time() - t0) * 1000, 2)}
+
+
+def handle_embed_audio_whisper(params: Dict[str, Any]) -> Dict[str, Any]:
+    audio_path = str(params.get("audio_path", "")).strip()
+    if not audio_path or not Path(audio_path).exists():
+        return {"ok": False, "error": f"audio_path missing or not found: {audio_path!r}"}
+    t0 = time.time()
+    try:
+        _ensure_runtime_module()
+        from thalamus.vector._hailo_runtime import (
+            HAILO10H_MODEL_DIR, configure_paths, first_output, l2_normalize, run_hailo_single,
+        )
+        configure_paths()
+        from hailo_apps.python.standalone_apps.speech_recognition.audio_utils import (
+            improve_audio, load_audio, preprocess_audio,
+        )
+        model_path = HAILO10H_MODEL_DIR / "base-whisper-encoder-10s.hef"
+        audio, _ = improve_audio(load_audio(audio_path))
+        chunks = preprocess_audio(audio, chunk_length=10, max_duration=600)
+        if not chunks:
+            raise RuntimeError("audio produced no 10s chunks")
+        vectors = []
+        for chunk in chunks:
+            outputs = run_hailo_single(str(model_path), chunk.astype(np.float32),
+                                       input_type="FLOAT32", output_type="FLOAT32")
+            squeezed = np.asarray(first_output(outputs), dtype=np.float32).squeeze()
+            if squeezed.ndim > 1:
+                if squeezed.shape[-1] == 512:
+                    squeezed = squeezed.mean(axis=tuple(range(squeezed.ndim - 1)))
+                else:
+                    squeezed = squeezed.flatten()[:512]
+            vectors.append(squeezed)
+        vec = l2_normalize(np.stack(vectors, axis=0).mean(axis=0))
+        encode_ms = (time.time() - t0) * 1000
+        if WHISPER_AUDIO_NAME not in LOADED_MODELS:
+            LOADED_MODELS[WHISPER_AUDIO_NAME] = {
+                "kind": "audio-whisper", "loaded_at": time.time(),
+                "load_ms": encode_ms, "dim": 512, "instance": None,
+            }
+        return {
+            "ok": True, "vector_dim": int(vec.shape[0]), "vector": vec.tolist(),
+            "model": WHISPER_AUDIO_NAME, "degraded": False,
+            "encode_ms": round(encode_ms, 2), "rss_mb": round(get_rss_mb(), 1),
+            "source": "encoder-daemon-hailo", "chunks": len(chunks),
+        }
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "degraded": True,
+                "encode_ms": round((time.time() - t0) * 1000, 2)}
+
+
 def handle_health(_params: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "ok": True,
@@ -147,6 +293,9 @@ def handle_unload(params: Dict[str, Any]) -> Dict[str, Any]:
 
 METHODS = {
     "embed_text": handle_embed_text,
+    "embed_clip_text": handle_embed_clip_text,
+    "embed_clip_image": handle_embed_clip_image,
+    "embed_audio_whisper": handle_embed_audio_whisper,
     "health": handle_health,
     "unload": handle_unload,
 }
