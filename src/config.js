@@ -18,6 +18,10 @@ export const SGA_ATOMS_DB = path.join(HOME, ".openclaw", "lancedb");
 export const SGA_RETRIEVER = path.join(SGA_DIR, "atom_retriever.py");
 export const HAILO_BENCHMARK_HEF =
   process.env.THALAMUS_HEF || "/usr/share/hailo-models/yolov8m_h10.hef";
+export const HAILO_OLLAMA_BASE_URL =
+  process.env.HAILO_OLLAMA_BASE_URL || "http://127.0.0.1:8000";
+export const HAILO_LOCAL_MODEL =
+  process.env.THALAMUS_LOCAL_MODEL || "qwen2.5-instruct:1.5b";
 
 export const DASHBOARD_HOST = process.env.THALAMUS_HOST || "127.0.0.1";
 export const DASHBOARD_PORT = Number(process.env.THALAMUS_PORT || "18888");

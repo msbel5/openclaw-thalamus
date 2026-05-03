@@ -11,6 +11,7 @@ import {
   SGA_PYTHON
 } from "./config.js";
 import { readJsonSafe, redact, runFile } from "./system.js";
+import { getLocalLlmStatus } from "./local_llm.js";
 
 function parseHailoIdentify(text) {
   const out = {};
@@ -162,8 +163,9 @@ async function getHailoPackages() {
 }
 
 export async function getHealth() {
-  const [hailo, openclaw, trading, atoms, disk, packages] = await Promise.all([
+  const [hailo, local_llm, openclaw, trading, atoms, disk, packages] = await Promise.all([
     getHailoHealth(),
+    getLocalLlmStatus(),
     getOpenClawHealth(),
     getServiceState("trading-bot.service"),
     getAtomStats(),
@@ -176,11 +178,13 @@ export async function getHealth() {
     status: {
       ok: hailo.ok && openclaw.ok && trading.ok,
       hailo: hailo.ok,
+      local_llm: local_llm.ok && local_llm.default_model_available,
       openclaw: openclaw.ok,
       trading_bot: trading.ok,
       atom_memory: atoms.ok
     },
     hailo,
+    local_llm,
     openclaw,
     trading_bot: trading,
     atom_memory: atoms,

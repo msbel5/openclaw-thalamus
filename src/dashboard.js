@@ -6,6 +6,7 @@ import { runBenchmark } from "./benchmark.js";
 import { buildContextPacket } from "./context.js";
 import { DASHBOARD_HOST, DASHBOARD_PORT, STATE_DIR } from "./config.js";
 import { getHealth } from "./health.js";
+import { runLocalInference } from "./local_llm.js";
 import { ensureDirs, redact } from "./system.js";
 
 const html = `<!doctype html>
@@ -110,6 +111,7 @@ const html = `<!doctype html>
   <main>
     <div class="grid">
       <div class="stat"><div class="label">Hailo</div><div id="s-hailo" class="value">...</div></div>
+      <div class="stat"><div class="label">Local LLM</div><div id="s-local" class="value">...</div></div>
       <div class="stat"><div class="label">OpenClaw</div><div id="s-openclaw" class="value">...</div></div>
       <div class="stat"><div class="label">Trading Bot</div><div id="s-trading" class="value">...</div></div>
       <div class="stat"><div class="label">Atoms</div><div id="s-atoms" class="value">...</div></div>
@@ -119,6 +121,7 @@ const html = `<!doctype html>
       <div class="row">
         <input id="task" value="Build Sprint 5 magic system with proof and no fabrication" />
         <button class="primary" onclick="makePacket()">Build Packet</button>
+        <button onclick="runLocal()">Local LLM</button>
       </div>
     </section>
     <div class="wide">
@@ -150,6 +153,8 @@ const html = `<!doctype html>
         ["Host", health.hostname],
         ["Hailo arch", health.hailo?.identify?.architecture || "?"],
         ["Hailo firmware", health.hailo?.identify?.firmware || "?"],
+        ["Local LLM", health.local_llm?.default_model || "?"],
+        ["Local LLM models", (health.local_llm?.models || []).join(", ")],
         ["Gateway PID", health.openclaw?.gateway?.props?.MainPID || "?"],
         ["OpenClaw version", health.openclaw?.version || "?"],
         ["MCP servers", (health.openclaw?.mcp_servers || []).join(", ")],
@@ -160,6 +165,7 @@ const html = `<!doctype html>
     async function refresh() {
       const health = await getJson("/api/health");
       setStatus("s-hailo", health.status.hailo, health.status.hailo ? "online" : "bad");
+      setStatus("s-local", health.status.local_llm, health.status.local_llm ? "ready" : "bad");
       setStatus("s-openclaw", health.status.openclaw, health.status.openclaw ? "online" : "bad");
       setStatus("s-trading", health.status.trading_bot, health.status.trading_bot ? "active" : "bad");
       setStatus("s-atoms", health.status.atom_memory, String(health.atom_memory?.count || 0));
@@ -171,6 +177,12 @@ const html = `<!doctype html>
       const task = encodeURIComponent(document.getElementById("task").value);
       const packet = await getJson("/api/context?task=" + task);
       document.getElementById("packet").textContent = JSON.stringify(packet, null, 2);
+      refresh();
+    }
+    async function runLocal() {
+      const prompt = encodeURIComponent(document.getElementById("task").value);
+      const result = await getJson("/api/local-inference?prompt=" + prompt);
+      document.getElementById("packet").textContent = JSON.stringify(result, null, 2);
       refresh();
     }
     async function runBenchmark(runHailo) {
@@ -234,6 +246,11 @@ async function handle(req, res) {
     }
     if (url.pathname === "/api/benchmark") {
       await sendJson(res, await runBenchmark({ runHailo: url.searchParams.get("runHailo") === "1", noRemote: true }));
+      return;
+    }
+    if (url.pathname === "/api/local-inference") {
+      const prompt = url.searchParams.get("prompt") || "Mami sana selam söylüyor. Tek cümle Türkçe cevap ver.";
+      await sendJson(res, await runLocalInference({ prompt, max_tokens: 80, temperature: 0.2 }));
       return;
     }
     res.writeHead(404, { "content-type": "text/plain" });

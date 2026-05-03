@@ -8,6 +8,7 @@ import {
 import { runBenchmark } from "./benchmark.js";
 import { buildContextPacket } from "./context.js";
 import { getHealth } from "./health.js";
+import { runLocalInference } from "./local_llm.js";
 
 const server = new Server(
   {
@@ -84,6 +85,34 @@ const tools = [
         }
       }
     }
+  },
+  {
+    name: "thalamus_local_inference",
+    description:
+      "Run a short local Hailo-10H LLM inference through the loopback hailo-ollama server. Use only for lightweight chat, memory notes, summaries, and classification.",
+    inputSchema: {
+      type: "object",
+      required: ["prompt"],
+      properties: {
+        prompt: {
+          type: "string",
+          description: "Prompt for the local model."
+        },
+        model: {
+          type: "string",
+          description: "Optional Hailo Ollama model name.",
+          default: "qwen2.5-instruct:1.5b"
+        },
+        max_tokens: {
+          type: "number",
+          default: 80
+        },
+        temperature: {
+          type: "number",
+          default: 0.2
+        }
+      }
+    }
   }
 ];
 
@@ -105,6 +134,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       noRemote: args.noRemote !== false,
       topK: args.topK || 5
     });
+  } else if (request.params.name === "thalamus_local_inference") {
+    result = await runLocalInference(args);
   } else {
     throw new Error(`Unknown tool: ${request.params.name}`);
   }
@@ -120,4 +151,3 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-
