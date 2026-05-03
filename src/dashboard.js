@@ -7,7 +7,31 @@ import { buildContextPacket } from "./context.js";
 import { DASHBOARD_HOST, DASHBOARD_PORT, STATE_DIR } from "./config.js";
 import { getHealth } from "./health.js";
 import { runLocalInference } from "./local_llm.js";
+import { resolvePacket } from "./packet_store.js";
 import { ensureDirs, redact } from "./system.js";
+import { search as vectorSearch } from "./vector_store.js";
+
+async function readJsonBody(req, maxBytes = 200_000) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on("data", (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(new Error("payload too large"));
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      const raw = Buffer.concat(chunks).toString("utf8").trim();
+      if (!raw) return resolve({});
+      try { resolve(JSON.parse(raw)); }
+      catch (err) { reject(new Error("invalid JSON body: " + err.message)); }
+    });
+    req.on("error", reject);
+  });
+}
 
 const html = `<!doctype html>
 <html lang="en">
@@ -258,6 +282,56 @@ async function handle(req, res) {
     if (url.pathname === "/api/local-inference") {
       const prompt = url.searchParams.get("prompt") || "Mami sana selam söylüyor. Tek cümle Türkçe cevap ver.";
       await sendJson(res, await runLocalInference({ prompt, max_tokens: 80, temperature: 0.2 }));
+      return;
+    }
+    if (url.pathname === "/api/resolve") {
+      const packetId = url.searchParams.get("packet_id");
+      const resolverKey = url.searchParams.get("resolver_key");
+      if (!packetId) {
+        await sendJson(res, { ok: false, error: "missing packet_id" });
+        return;
+      }
+      try {
+        const out = await resolvePacket(packetId, resolverKey || null);
+        await sendJson(res, out);
+      } catch (err) {
+        await sendJson(res, { ok: false, error: redact(err.message || String(err)) });
+      }
+      return;
+    }
+    if (url.pathname === "/api/search") {
+      let body = {};
+      if (req.method === "POST") {
+        try { body = await readJsonBody(req); }
+        catch (err) {
+          await sendJson(res, { ok: false, error: redact(err.message) });
+          return;
+        }
+      }
+      const namespace = body.namespace || url.searchParams.get("namespace") || "atoms.memory";
+      const k = Number(body.k ?? url.searchParams.get("k") ?? 5);
+      const threshold = body.threshold !== undefined
+        ? Number(body.threshold)
+        : (url.searchParams.get("threshold") !== null ? Number(url.searchParams.get("threshold")) : undefined);
+      const sourceFilter = Array.isArray(body.source_filter) ? body.source_filter : undefined;
+      const text = body.text ?? url.searchParams.get("text") ?? undefined;
+      const vectorId = body.vector_id ?? url.searchParams.get("vector_id") ?? undefined;
+      const vector = Array.isArray(body.vector) ? body.vector.map(Number) : undefined;
+      try {
+        const out = await vectorSearch({
+          namespace,
+          k,
+          threshold,
+          source_filter: sourceFilter,
+          source_namespace: body.source_namespace || url.searchParams.get("source_namespace") || undefined,
+          ...(vector ? { vector } : {}),
+          ...(vectorId ? { vector_id: vectorId } : {}),
+          ...(text ? { text } : {})
+        });
+        await sendJson(res, out);
+      } catch (err) {
+        await sendJson(res, { ok: false, error: redact(err.message || String(err)) });
+      }
       return;
     }
     res.writeHead(404, { "content-type": "text/plain" });

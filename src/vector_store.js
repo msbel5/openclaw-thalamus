@@ -10,8 +10,10 @@ import {
   VECTOR_STORE_DIR
 } from "./config.js";
 import { appendJsonl, ensureDirs, pathExists, readJsonSafe, runFile, sha256, stableId, writeJson } from "./system.js";
+import { embedTextViaDaemon, isAvailable as isEncoderDaemonAvailable } from "./encoder_client.js";
 
 const DEFAULT_TEXT_NAMESPACE = "atoms.memory";
+const ENCODER_DAEMON_DISABLED = process.env.THALAMUS_ENCODER_DAEMON_DISABLED === "1";
 
 function namespaceFile(namespace) {
   return path.join(VECTOR_STORE_DIR, `${namespace.replace(/[^a-z0-9_.-]/gi, "_")}.json`);
@@ -153,6 +155,27 @@ async function runEncoder(moduleName, args, options = {}) {
 }
 
 async function semanticText(text) {
+  // Tier 1: encoder daemon over UNIX socket (warm path ~200ms, cold ~26s once).
+  if (!ENCODER_DAEMON_DISABLED) {
+    try {
+      if (await isEncoderDaemonAvailable(800)) {
+        const startedAt = Date.now();
+        const r = await embedTextViaDaemon(text);
+        return {
+          ok: true,
+          vector: l2Normalize(r.vector.map(Number)),
+          dim: Number(r.vector_dim || r.vector.length),
+          model: r.model || "distiluse-base-multilingual-cased-v2",
+          degraded: false,
+          latency_ms: r.encode_ms ?? (Date.now() - startedAt),
+          proof: { source: r.source || "encoder-daemon", rss_mb: r.rss_mb }
+        };
+      }
+    } catch (err) {
+      console.warn(`[thalamus] encoder daemon path failed, falling back to subprocess: ${err.message}`);
+    }
+  }
+  // Tier 2: legacy subprocess to Python module (cold ~67s).
   const out = await runEncoder("thalamus.vector.embed_text_semantic", [text], { timeout: 90_000 });
   if (out.ok) return out;
   console.warn(`[thalamus] semantic text encoder degraded: ${out.error}`);
