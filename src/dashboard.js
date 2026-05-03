@@ -115,6 +115,8 @@ const html = `<!doctype html>
       <div class="stat"><div class="label">OpenClaw</div><div id="s-openclaw" class="value">...</div></div>
       <div class="stat"><div class="label">Trading Bot</div><div id="s-trading" class="value">...</div></div>
       <div class="stat"><div class="label">Atoms</div><div id="s-atoms" class="value">...</div></div>
+      <div class="stat"><div class="label">Packets</div><div id="s-packets" class="value">...</div></div>
+      <div class="stat"><div class="label">Vectors</div><div id="s-vectors" class="value">...</div></div>
     </div>
     <section>
       <h2>Context Packet</h2>
@@ -158,6 +160,8 @@ const html = `<!doctype html>
         ["Gateway PID", health.openclaw?.gateway?.props?.MainPID || "?"],
         ["OpenClaw version", health.openclaw?.version || "?"],
         ["MCP servers", (health.openclaw?.mcp_servers || []).join(", ")],
+        ["Packet store", (health.packet_store?.count || 0) + " packets, " + (health.packet_store?.promoted || 0) + " promoted"],
+        ["Vector namespaces", Object.entries(health.vector_store?.namespaces || {}).map(([k,v]) => k + "=" + v.count).join(", ")],
         ["Disk", health.disk?.df_home || "?"]
       ];
       document.getElementById("detail").innerHTML = rows.map(([k,v]) => "<tr><th>" + k + "</th><td>" + String(v) + "</td></tr>").join("");
@@ -169,6 +173,9 @@ const html = `<!doctype html>
       setStatus("s-openclaw", health.status.openclaw, health.status.openclaw ? "online" : "bad");
       setStatus("s-trading", health.status.trading_bot, health.status.trading_bot ? "active" : "bad");
       setStatus("s-atoms", health.status.atom_memory, String(health.atom_memory?.count || 0));
+      setStatus("s-packets", health.status.packet_store, String(health.packet_store?.count || 0));
+      const vectorCount = Object.values(health.vector_store?.namespaces || {}).reduce((sum, row) => sum + (row.count || 0), 0);
+      setStatus("s-vectors", health.status.vector_store, String(vectorCount));
       renderDetail(health);
       const latest = await getJson("/api/latest");
       document.getElementById("packet").textContent = JSON.stringify(latest.latest_packet || health.status, null, 2);

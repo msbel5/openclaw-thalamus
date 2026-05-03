@@ -9,6 +9,10 @@ export const THALAMUS_HOME =
 export const STATE_DIR = path.join(THALAMUS_HOME, "state");
 export const REPORT_DIR = path.join(THALAMUS_HOME, "reports");
 export const DATA_DIR = path.join(THALAMUS_HOME, "data");
+export const PACKET_DIR = path.join(STATE_DIR, "packets");
+export const VECTOR_STORE_DIR = path.join(STATE_DIR, "vectors");
+export const VECTOR_CACHE_DIR = path.join(THALAMUS_HOME, ".cache", "normalizers");
+export const AOT_EVENTS_PATH = path.join(STATE_DIR, "aot-events.jsonl");
 
 export const OPENCLAW_JSON = path.join(HOME, ".openclaw", "openclaw.json");
 export const OPENCLAW_BIN = path.join(HOME, ".npm-global", "bin", "openclaw");
@@ -22,6 +26,28 @@ export const HAILO_OLLAMA_BASE_URL =
   process.env.HAILO_OLLAMA_BASE_URL || "http://127.0.0.1:8000";
 export const HAILO_LOCAL_MODEL =
   process.env.THALAMUS_LOCAL_MODEL || "qwen2.5-instruct:1.5b";
+export const HAILO_APPS_DIR = path.join(HOME, "projects-alcyone", "hailo-apps");
+export const HAILO_APPS_PYTHON = path.join(HAILO_APPS_DIR, "venv_hailo_apps", "bin", "python");
+export const HAILO_ENCODERS = {
+  whisper_10s: "/usr/local/hailo/resources/models/hailo10h/base-whisper-encoder-10s.hef",
+  clip_image: "/usr/local/hailo/resources/models/hailo10h/clip_vit_b_32_image_encoder.hef",
+  clip_text: "/usr/local/hailo/resources/models/hailo10h/clip_vit_b_32_text_encoder.hef"
+};
+
+export const PACKET_TTL_DAYS = Number(process.env.THALAMUS_PACKET_TTL_DAYS || "30");
+export const PACKET_MAX_COUNT = Number(process.env.THALAMUS_PACKET_MAX_COUNT || "5000");
+
+export const VECTOR_NAMESPACES = {
+  "atoms.code": { dim: 384, side: "text", model: "minilm-l6", threshold: 0.85 },
+  "atoms.audit": { dim: 384, side: "text", model: "minilm-l6", threshold: 0.85 },
+  "atoms.plan": { dim: 384, side: "text", model: "minilm-l6", threshold: 0.85 },
+  "atoms.memory": { dim: 384, side: "text", model: "minilm-l6", threshold: 0.92 },
+  "atoms.audio.raw": { dim: 512, side: "audio", model: "hailo-whisper-encoder", threshold: 0.85 },
+  "atoms.audio.text": { dim: 384, side: "audio", model: "whisper-text-minilm-l6", threshold: 0.85 },
+  "atoms.image.raw": { dim: 512, side: "image", model: "hailo-clip-image", threshold: 0.85 },
+  "atoms.image.text": { dim: 384, side: "image", model: "vlm-ocr-text-minilm-l6", threshold: 0.85 },
+  "atoms.crossmodal": { dim: 512, side: "crossmodal", model: "hailo-clip-shared", threshold: 0.85 }
+};
 
 export const DASHBOARD_HOST = process.env.THALAMUS_HOST || "127.0.0.1";
 export const DASHBOARD_PORT = Number(process.env.THALAMUS_PORT || "18888");

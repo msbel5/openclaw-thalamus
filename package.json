@@ -1,7 +1,7 @@
 {
   "name": "openclaw-thalamus",
-  "version": "0.1.0",
-  "description": "Observable Thalamus router for Alcyone: Hailo health, atom memory packets, and MCP tools.",
+  "version": "0.2.0",
+  "description": "Vector-aware Thalamus router for Alcyone: packet resolver, atom memory, multimodal vectors, Hailo local inference, and MCP tools.",
   "type": "module",
   "private": true,
   "bin": {

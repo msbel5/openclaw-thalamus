@@ -1,13 +1,24 @@
 import { execFile } from "node:child_process";
+import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { DATA_DIR, REPORT_DIR, STATE_DIR } from "./config.js";
+import {
+  DATA_DIR,
+  PACKET_DIR,
+  REPORT_DIR,
+  STATE_DIR,
+  VECTOR_CACHE_DIR,
+  VECTOR_STORE_DIR
+} from "./config.js";
 
 export async function ensureDirs() {
   await Promise.all([
     fs.mkdir(DATA_DIR, { recursive: true }),
+    fs.mkdir(PACKET_DIR, { recursive: true }),
     fs.mkdir(REPORT_DIR, { recursive: true }),
-    fs.mkdir(STATE_DIR, { recursive: true })
+    fs.mkdir(STATE_DIR, { recursive: true }),
+    fs.mkdir(VECTOR_CACHE_DIR, { recursive: true }),
+    fs.mkdir(VECTOR_STORE_DIR, { recursive: true })
   ]);
 }
 
@@ -63,6 +74,19 @@ export function stableId(prefix, input) {
   return `${prefix}-${now}-${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
+export async function pathExists(file) {
+  try {
+    await fs.access(file);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function sha256(input) {
+  return crypto.createHash("sha256").update(String(input)).digest("hex");
+}
+
 export function redact(text) {
   if (!text) return "";
   return String(text)
@@ -87,4 +111,3 @@ export async function fileSizeTokens(files) {
   }
   return { files: existing, bytes: chars, tokens: Math.ceil(chars / 4) };
 }
-

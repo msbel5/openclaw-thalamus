@@ -12,6 +12,8 @@ import {
 } from "./config.js";
 import { readJsonSafe, redact, runFile } from "./system.js";
 import { getLocalLlmStatus } from "./local_llm.js";
+import { getPacketStats } from "./packet_store.js";
+import { getVectorStats } from "./vector_store.js";
 
 function parseHailoIdentify(text) {
   const out = {};
@@ -163,14 +165,16 @@ async function getHailoPackages() {
 }
 
 export async function getHealth() {
-  const [hailo, local_llm, openclaw, trading, atoms, disk, packages] = await Promise.all([
+  const [hailo, local_llm, openclaw, trading, atoms, disk, packages, packets, vectors] = await Promise.all([
     getHailoHealth(),
     getLocalLlmStatus(),
     getOpenClawHealth(),
     getServiceState("trading-bot.service"),
     getAtomStats(),
     getDiskHealth(),
-    getHailoPackages()
+    getHailoPackages(),
+    getPacketStats(),
+    getVectorStats()
   ]);
   return {
     generated_at: new Date().toISOString(),
@@ -181,13 +185,17 @@ export async function getHealth() {
       local_llm: local_llm.ok && local_llm.default_model_available,
       openclaw: openclaw.ok,
       trading_bot: trading.ok,
-      atom_memory: atoms.ok
+      atom_memory: atoms.ok,
+      packet_store: packets.ok,
+      vector_store: vectors.ok
     },
     hailo,
     local_llm,
     openclaw,
     trading_bot: trading,
     atom_memory: atoms,
+    packet_store: packets,
+    vector_store: vectors,
     disk,
     packages
   };

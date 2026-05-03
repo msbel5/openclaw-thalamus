@@ -1,0 +1,7 @@
+[Unit]
+Description=Alcyone Thalamus packet TTL cleanup
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/msbel/projects-alcyone/openclaw-thalamus
+ExecStart=/usr/bin/node /home/msbel/projects-alcyone/openclaw-thalamus/src/cli.js packet-cleanup

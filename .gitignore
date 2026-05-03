@@ -3,3 +3,6 @@ hailort.log
 npm-debug.log*
 .DS_Store
 *.tmp
+
+__pycache__/
+*.py[cod]

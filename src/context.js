@@ -9,6 +9,7 @@ import {
   STATE_DIR
 } from "./config.js";
 import { getHealth } from "./health.js";
+import { savePacket } from "./packet_store.js";
 import {
   appendJsonl,
   ensureDirs,
@@ -174,6 +175,9 @@ export async function buildContextPacket(task, options = {}) {
     packet.summary = `${packet.summary} Packet trimmed to fit budget.`;
     packet.token_estimate.packet_tokens = roughTokenEstimate(packet);
   }
+  const savedPacket = await savePacket(packet);
+  packet.resolver_key = savedPacket.resolver_key;
+  packet.expires_at = savedPacket.expires_at;
   await writeJson(path.join(STATE_DIR, "latest_packet.json"), packet);
   await appendJsonl(path.join(STATE_DIR, "tool_calls.jsonl"), {
     ts: packet.generated_at,
