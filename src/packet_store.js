@@ -86,7 +86,7 @@ function stripTextFields(value, opts = {}) {
     const out = {};
     for (const [key, val] of Object.entries(value)) {
       if (opts.with_text === false && ["text", "task", "summary", "message", "prompt", "stdout", "stderr", "content"].includes(key)) continue;
-      if (opts.with_vectors === false && ["vector", "normalized_512", "inline_vector"].includes(key)) continue;
+      if (opts.with_vectors === false && ["vector", "normalized_512", "normalized_1024", "inline_vector"].includes(key)) continue;
       out[key] = stripTextFields(val, opts);
     }
     return out;

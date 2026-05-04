@@ -144,7 +144,7 @@ export async function routeTask(input = {}) {
       resolver_key: cachedPacket.resolver_key,
       thalamus_used: true,
       vector_query_present: Boolean(cachedPacket.vector_query),
-      inline_vector_present: Boolean(cachedPacket.vector_query?.normalized_512),
+      inline_vector_present: Boolean(cachedPacket.vector_query?.vector || cachedPacket.vector_query?.normalized_512),
       packet_count: 1
     });
     return {
@@ -169,7 +169,7 @@ export async function routeTask(input = {}) {
   for (const namespace of namespaces.filter((ns) => VECTOR_NAMESPACES[ns])) {
     searches.push(
       await search({
-        vector: query.normalized_512,
+        vector: query.vector || query.normalized_1024 || query.normalized_512,
         source_namespace: query.namespace,
         namespace,
         k: input.k || input.topK || 5,
@@ -207,7 +207,7 @@ export async function routeTask(input = {}) {
     fallback_chain: fallbackChain(intent),
     vector_policy: {
       query_dim: query?.vector_dim || null,
-      normalized_dim: 512,
+      normalized_dim: query?.vector_dim || 1024,
       namespaces,
       thresholds: Object.fromEntries(namespaces.map((ns) => [ns, VECTOR_NAMESPACES[ns]?.threshold || 0.85]))
     }
@@ -225,6 +225,8 @@ export async function routeTask(input = {}) {
       namespace: query?.namespace,
       vector_dim: query?.vector_dim,
       normalized_512: query?.normalized_512,
+      normalized_1024: query?.normalized_1024,
+      vector: query?.vector,
       degraded: embedding.degraded
     },
     searches,
@@ -269,7 +271,7 @@ export async function routeTask(input = {}) {
     resolver_key: packet.resolver_key,
     thalamus_used: true,
     vector_query_present: Boolean(packet.vector_query),
-    inline_vector_present: Boolean(query?.normalized_512),
+    inline_vector_present: Boolean(query?.vector || query?.normalized_512),
     packet_count: 1
   });
   await appendJsonl(path.join(path.dirname(AOT_EVENTS_PATH), "route_events.jsonl"), {
@@ -277,8 +279,8 @@ export async function routeTask(input = {}) {
     tool: "thalamus_route",
     packet_id: packet.packet_id,
     resolver_key: packet.resolver_key,
-    inline_vector: query?.normalized_512,
-    inline_vector_dim: 512,
+    inline_vector: query?.vector || query?.normalized_1024 || query?.normalized_512,
+    inline_vector_dim: query?.vector_dim || 1024,
     inline_vector_namespace: query?.namespace,
     inline_vector_model: query?.model,
     intent,
@@ -293,8 +295,8 @@ export async function routeTask(input = {}) {
     thalamus_resolver_key: packet.resolver_key,
     packet_id: packet.packet_id,
     resolver_key: packet.resolver_key,
-    inline_vector: query?.normalized_512,
-    inline_vector_dim: 512,
+    inline_vector: query?.vector || query?.normalized_1024 || query?.normalized_512,
+    inline_vector_dim: query?.vector_dim || 1024,
     inline_vector_namespace: query?.namespace,
     inline_vector_model: query?.model,
     confidence,

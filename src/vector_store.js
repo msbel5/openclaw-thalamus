@@ -100,9 +100,9 @@ export function normalizePairwise(vecA, vecB, sourceA = "a", sourceB = "b") {
     return { a: l2Normalize(vecA), b: l2Normalize(vecB), common_dim: vecA.length };
   }
   return {
-    a: normalizeVectorToDim(vecA, 512, sourceA),
-    b: normalizeVectorToDim(vecB, 512, sourceB),
-    common_dim: 512
+    a: normalizeVectorToDim(vecA, 1024, sourceA),
+    b: normalizeVectorToDim(vecB, 1024, sourceB),
+    common_dim: 1024
   };
 }
 
@@ -173,15 +173,19 @@ async function semanticText(text) {
     try {
       if (await isEncoderDaemonAvailable(800)) {
         const startedAt = Date.now();
-        const r = await embedTextViaDaemon(text);
+        const method = process.env.THALAMUS_TEXT_ENCODER === "distiluse" ? "embed_text" : "embed_text_qwen3";
+        const r = method === "embed_text_qwen3"
+          ? await encoderDaemonCall("embed_text_qwen3", { text, variant: process.env.THALAMUS_QWEN3_VARIANT || "q4_0" }, { timeoutMs: 120000 })
+          : await embedTextViaDaemon(text);
+        if (!r || !r.ok || !Array.isArray(r.vector)) throw new Error(r?.error || `${method} failed`);
         return {
           ok: true,
           vector: l2Normalize(r.vector.map(Number)),
           dim: Number(r.vector_dim || r.vector.length),
-          model: r.model || "distiluse-base-multilingual-cased-v2",
+          model: r.model || (method === "embed_text_qwen3" ? "qwen3-embedding-0.6b-q4_0" : "distiluse-base-multilingual-cased-v2"),
           degraded: false,
           latency_ms: r.encode_ms ?? (Date.now() - startedAt),
-          proof: { source: r.source || "encoder-daemon", rss_mb: r.rss_mb }
+          proof: { source: r.source || "encoder-daemon", rss_mb: r.rss_mb, method }
         };
       }
     } catch (err) {
@@ -194,8 +198,8 @@ async function semanticText(text) {
   console.warn(`[thalamus] semantic text encoder degraded: ${out.error}`);
   return {
     ok: false,
-    vector: fallbackVector(`semantic:${text}`, 512),
-    dim: 512,
+    vector: fallbackVector(`semantic:${text}`, namespaceInfo(DEFAULT_TEXT_NAMESPACE).dim),
+    dim: namespaceInfo(DEFAULT_TEXT_NAMESPACE).dim,
     model: "deterministic-fallback",
     degraded: true,
     error: out.error
@@ -325,6 +329,7 @@ export async function upsertVector(entry) {
     native_dim: entry.native_dim || vector.length || info.dim,
     vector,
     normalized_512: normalizeVectorToDim(vector, 512, namespace),
+    normalized_1024: normalizeVectorToDim(vector, 1024, namespace),
     side: entry.side || info.side,
     model: entry.model || info.model,
     text: entry.text || null,
@@ -403,8 +408,9 @@ export async function embed(input = {}) {
       packet_id: packetId,
       vector_dim: 512,
       native_dim: cross.dim,
-      vector: cross.vector,
-      normalized_512: cross.vector,
+      vector: normalizeVectorToDim(cross.vector, namespaceInfo("atoms.crossmodal").dim, cross.model),
+      normalized_512: normalizeVectorToDim(cross.vector, 512, cross.model),
+      normalized_1024: normalizeVectorToDim(cross.vector, 1024, cross.model),
       side: "crossmodal",
       model: cross.model,
       text,
@@ -426,10 +432,11 @@ export async function embed(input = {}) {
       embeddings.push({
         namespace: "atoms.audio.raw",
         packet_id: packetId,
-        vector_dim: 512,
+        vector_dim: namespaceInfo("atoms.audio.raw").dim,
         native_dim: raw.dim,
-        vector: raw.vector,
-        normalized_512: raw.vector,
+        vector: normalizeVectorToDim(raw.vector, namespaceInfo("atoms.audio.raw").dim, raw.model),
+        normalized_512: normalizeVectorToDim(raw.vector, 512, raw.model),
+        normalized_1024: normalizeVectorToDim(raw.vector, 1024, raw.model),
         side: "audio",
         model: raw.model,
         raw_payload_path: audioPath,
@@ -446,10 +453,11 @@ export async function embed(input = {}) {
       embeddings.push({
         namespace: "atoms.audio.text",
         packet_id: packetId,
-        vector_dim: 512,
+        vector_dim: namespaceInfo("atoms.audio.text").dim,
         native_dim: audioText.dim,
-        vector: audioText.vector,
-        normalized_512: audioText.vector,
+        vector: normalizeVectorToDim(audioText.vector, namespaceInfo("atoms.audio.text").dim, audioText.model),
+        normalized_512: normalizeVectorToDim(audioText.vector, 512, audioText.model),
+        normalized_1024: normalizeVectorToDim(audioText.vector, 1024, audioText.model),
         side: "audio",
         model: audioText.model,
         text: transcriptHint,
@@ -473,10 +481,11 @@ export async function embed(input = {}) {
       embeddings.push({
         namespace: "atoms.image.raw",
         packet_id: packetId,
-        vector_dim: 512,
+        vector_dim: namespaceInfo("atoms.image.raw").dim,
         native_dim: raw.dim,
-        vector: raw.vector,
-        normalized_512: raw.vector,
+        vector: normalizeVectorToDim(raw.vector, namespaceInfo("atoms.image.raw").dim, raw.model),
+        normalized_512: normalizeVectorToDim(raw.vector, 512, raw.model),
+        normalized_1024: normalizeVectorToDim(raw.vector, 1024, raw.model),
         side: "image",
         model: raw.model,
         raw_payload_path: imagePath,
@@ -493,10 +502,11 @@ export async function embed(input = {}) {
       embeddings.push({
         namespace: "atoms.image.text",
         packet_id: packetId,
-        vector_dim: 512,
+        vector_dim: namespaceInfo("atoms.image.text").dim,
         native_dim: imageText.dim,
-        vector: imageText.vector,
-        normalized_512: imageText.vector,
+        vector: normalizeVectorToDim(imageText.vector, namespaceInfo("atoms.image.text").dim, imageText.model),
+        normalized_512: normalizeVectorToDim(imageText.vector, 512, imageText.model),
+        normalized_1024: normalizeVectorToDim(imageText.vector, 1024, imageText.model),
         side: "image",
         model: imageText.model,
         text: captionHint,
@@ -512,10 +522,11 @@ export async function embed(input = {}) {
       embeddings.push({
         namespace: "atoms.crossmodal",
         packet_id: packetId,
-        vector_dim: 512,
+        vector_dim: namespaceInfo("atoms.crossmodal").dim,
         native_dim: raw.dim,
-        vector: raw.vector,
-        normalized_512: raw.vector,
+        vector: normalizeVectorToDim(raw.vector, namespaceInfo("atoms.crossmodal").dim, raw.model),
+        normalized_512: normalizeVectorToDim(raw.vector, 512, raw.model),
+        normalized_1024: normalizeVectorToDim(raw.vector, 1024, raw.model),
         side: "image",
         model: raw.model,
         raw_payload_path: imagePath,
@@ -713,6 +724,7 @@ export async function initNamespaces(options = {}) {
             native_dim: semantic.dim,
             vector: normalizeVectorToDim(semantic.vector, info.dim, semantic.model),
             normalized_512: normalizeVectorToDim(semantic.vector, 512, semantic.model),
+            normalized_1024: normalizeVectorToDim(semantic.vector, 1024, semantic.model),
             model: semantic.model,
             degraded: semantic.degraded,
             proof: { ...(row.proof || {}), migrated_by: "init-namespaces", semantic: encoderProof("text", semantic) }
@@ -724,6 +736,7 @@ export async function initNamespaces(options = {}) {
             vector_dim: info.dim,
             vector: normalizeVectorToDim(row.vector || [], info.dim, row.namespace || namespace),
             normalized_512: normalizeVectorToDim(row.vector || [], 512, row.namespace || namespace),
+            normalized_1024: normalizeVectorToDim(row.vector || [], 1024, row.namespace || namespace),
             degraded: true,
             proof: { ...(row.proof || {}), degraded_reason: "dimension migrated without source text" }
           });

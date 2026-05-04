@@ -392,9 +392,26 @@ def _concept_encode_decode(vec):
         recon = recon @ opq
     return codes[0].astype(np.uint8).tolist(), recon[0].astype(np.float32).tolist(), _cos(arr[0], recon[0])
 
+def _codebook_meta() -> Dict[str, Any]:
+    try:
+        return json.load(open(CODEBOOK_META_PATH))
+    except Exception:
+        return {}
+
+def _concept_dim_ok(vec) -> tuple[bool, str]:
+    meta = _codebook_meta()
+    if not meta.get("ok"):
+        return False, "codebook_not_ok"
+    if int(meta.get("dim") or 0) != len(vec):
+        return False, f"dim_mismatch:{len(vec)}!={meta.get('dim')}"
+    return True, "ok"
+
 def handle_concept_encode(params: Dict[str, Any]) -> Dict[str, Any]:
     if not concept_enabled(): return {"ok": False, "path": "vector", "reason": "disabled"}
-    codes, recon, cos = _concept_encode_decode(params.get("vector") or [])
+    vec = params.get("vector") or []
+    dim_ok, dim_reason = _concept_dim_ok(vec)
+    if not dim_ok: return {"ok": False, "path": "vector", "reason": dim_reason}
+    codes, recon, cos = _concept_encode_decode(vec)
     if codes is None: return {"ok": False, "path": "vector", "reason": "no_codebook"}
     return {"ok": True, "codes": codes, "recon_cos": round(cos, 6), "bytes": len(codes)}
 
@@ -415,16 +432,19 @@ def handle_concept_route_decision(params: Dict[str, Any]) -> Dict[str, Any]:
     if not concept_enabled(): reason="disabled"
     elif not CODEBOOK_PATH.exists(): reason="no_codebook"
     else:
-        codes, recon, cos = _concept_encode_decode(params.get("vector") or [])
-        meta={}
-        try: meta=json.load(open(CODEBOOK_META_PATH))
-        except Exception: meta={}
-        coverage=float(meta.get("coverage_estimate", 1.0))
-        if cos < 0.90: reason=f"recon_cos={cos:.3f}<0.90"
-        elif coverage < 0.95: reason="low_coverage"
+        vec = params.get("vector") or []
+        dim_ok, dim_reason = _concept_dim_ok(vec)
+        if not dim_ok:
+            reason = dim_reason
         else:
-            out={"path":"code", "reason":"ok", "codes":codes, "recon_cos":round(cos,6), "coverage_estimate":coverage}
-            reason=None
+            codes, recon, cos = _concept_encode_decode(vec)
+            meta=_codebook_meta()
+            coverage=float(meta.get("coverage_estimate", 1.0))
+            if cos < 0.90: reason=f"recon_cos={cos:.3f}<0.90"
+            elif coverage < 0.95: reason="low_coverage"
+            else:
+                out={"path":"code", "reason":"ok", "codes":codes, "recon_cos":round(cos,6), "coverage_estimate":coverage}
+                reason=None
     if reason: out={"path":"vector", "reason":reason}
     try:
         CONCEPT_TELEMETRY_PATH.parent.mkdir(parents=True, exist_ok=True)

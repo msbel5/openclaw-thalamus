@@ -56,15 +56,15 @@ export const PACKET_TTL_DAYS = Number(process.env.THALAMUS_PACKET_TTL_DAYS || "3
 export const PACKET_MAX_COUNT = Number(process.env.THALAMUS_PACKET_MAX_COUNT || "5000");
 
 export const VECTOR_NAMESPACES = {
-  "atoms.code": { dim: 512, side: "text", model: "distiluse-base-multilingual-cased-v2", threshold: 0.85 },
-  "atoms.audit": { dim: 512, side: "text", model: "distiluse-base-multilingual-cased-v2", threshold: 0.85 },
-  "atoms.plan": { dim: 512, side: "text", model: "distiluse-base-multilingual-cased-v2", threshold: 0.85 },
-  "atoms.memory": { dim: 512, side: "text", model: "distiluse-base-multilingual-cased-v2", threshold: 0.92 },
-  "atoms.audio.raw": { dim: 512, side: "audio", model: "hailo-whisper-encoder", threshold: 0.85 },
-  "atoms.audio.text": { dim: 512, side: "audio", model: "distiluse-base-multilingual-cased-v2", threshold: 0.85 },
-  "atoms.image.raw": { dim: 512, side: "image", model: "hailo-clip-image", threshold: 0.85 },
-  "atoms.image.text": { dim: 512, side: "image", model: "distiluse-base-multilingual-cased-v2", threshold: 0.85 },
-  "atoms.crossmodal": { dim: 512, side: "crossmodal", model: "hailo-clip-shared", threshold: 0.85 }
+  "atoms.code": { dim: 1024, side: "text", model: "qwen3-embedding-0.6b-q4_0", threshold: 0.85 },
+  "atoms.audit": { dim: 1024, side: "text", model: "qwen3-embedding-0.6b-q4_0", threshold: 0.85 },
+  "atoms.plan": { dim: 1024, side: "text", model: "qwen3-embedding-0.6b-q4_0", threshold: 0.85 },
+  "atoms.memory": { dim: 1024, side: "text", model: "qwen3-embedding-0.6b-q4_0", threshold: 0.92 },
+  "atoms.audio.raw": { dim: 1024, side: "audio", model: "hailo-whisper-encoder", threshold: 0.85 },
+  "atoms.audio.text": { dim: 1024, side: "audio", model: "qwen3-embedding-0.6b-q4_0", threshold: 0.85 },
+  "atoms.image.raw": { dim: 1024, side: "image", model: "hailo-clip-image", threshold: 0.85 },
+  "atoms.image.text": { dim: 1024, side: "image", model: "qwen3-embedding-0.6b-q4_0", threshold: 0.85 },
+  "atoms.crossmodal": { dim: 1024, side: "crossmodal", model: "hailo-clip-shared", threshold: 0.85 }
 };
 
 export const DASHBOARD_HOST = process.env.THALAMUS_HOST || "127.0.0.1";
