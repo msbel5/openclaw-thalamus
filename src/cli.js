@@ -14,6 +14,7 @@ import { resolveRoute, routeTask } from "./router.js";
 import { ensureDirs, writeJson } from "./system.js";
 import { cluster, compare, embed, initNamespaces, search } from "./vector_store.js";
 import { assertThalamusRouted, recordThalamusTelemetry, validateSpawnContextFile } from "./spawn_guard.js";
+import { closeRejection, getOpenRejection, recordRejection } from "./escalate.js";
 
 
 const execFileAsync = promisify(execFile);
@@ -304,10 +305,33 @@ async function main() {
       vector_query_present: result.inline_vector_present || result.tensor_bundle_present,
       inline_vector_present: result.inline_vector_present,
       tensor_bundle_present: result.tensor_bundle_present,
+      protocol_version: result.protocol_version,
+      protocol_ack: result.protocol_ack,
       packet_count: 1
     });
     console.log(JSON.stringify(result, null, 2));
     return;
+  }
+  if (command === "escalate") {
+    const action = process.argv[3] || "record";
+    if (action === "record") {
+      console.log(JSON.stringify(await recordRejection({
+        pr_number: argAfter("--pr", "0"),
+        verdict_file: argAfter("--verdict-file", ""),
+        reason: argAfter("--reason", "REJECTED"),
+        packet_id: argAfter("--packet-id", null),
+        resolver_key: argAfter("--resolver-key", null)
+      }), null, 2));
+      return;
+    }
+    if (action === "get") {
+      console.log(JSON.stringify(await getOpenRejection(argAfter("--pr", "0")), null, 2));
+      return;
+    }
+    if (action === "close") {
+      console.log(JSON.stringify(await closeRejection(argAfter("--pr", "0"), argAfter("--resolution", "APPROVED")), null, 2));
+      return;
+    }
   }
   if (command === "packet-cleanup") {
     console.log(JSON.stringify(await cleanupPackets(), null, 2));

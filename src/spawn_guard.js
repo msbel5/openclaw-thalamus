@@ -1,14 +1,42 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { STATE_DIR } from "./config.js";
-import { appendJsonl, readJsonSafe } from "./system.js";
+import { appendJsonl, readJsonSafe, roughTokenEstimate } from "./system.js";
 
 export const RUN_TELEMETRY_PATH = path.join(STATE_DIR, "run_telemetry.jsonl");
+export const ALCYONE_PROTOCOL_VERSION = "alcyone-v1";
+
+export function protocolAck() {
+  return "@ack:alcyone-v1";
+}
+
+export function compactSpawnContext(context = {}) {
+  const packetId = context.packet_id || context.thalamus_packet_id;
+  const resolverKey = context.resolver_key || context.thalamus_resolver_key;
+  const compact = {
+    protocol_version: ALCYONE_PROTOCOL_VERSION,
+    ack: protocolAck(),
+    "@p": packetId,
+    "@r": resolverKey,
+    "@v": Array.isArray(context.inline_vector) ? 1 : 0,
+    "@tb": context.tensor_bundle_id || null,
+    "@ns": context.inline_vector_namespace || null,
+    "@q": context.query_path || (Array.isArray(context.inline_vector) || context.tensor_bundle_id ? "vector" : "packet")
+  };
+  const baseline_tokens = roughTokenEstimate(context);
+  const compact_tokens = roughTokenEstimate(compact);
+  return {
+    context: compact,
+    baseline_tokens,
+    compact_tokens,
+    reduction: baseline_tokens ? 1 - compact_tokens / baseline_tokens : 0
+  };
+}
 
 export function assertThalamusRouted(spawnContext = {}) {
   const context = spawnContext.context && typeof spawnContext.context === "object" ? spawnContext.context : spawnContext;
-  const packetId = context.packet_id || context.thalamus_packet_id;
-  const resolverKey = context.resolver_key || context.thalamus_resolver_key;
+  const packetId = context.packet_id || context.thalamus_packet_id || context["@p"];
+  const resolverKey = context.resolver_key || context.thalamus_resolver_key || context["@r"];
   if (!packetId || !resolverKey) {
     const error = new Error("thalamus_required: spawn context must include packet_id and resolver_key");
     error.code = "thalamus_required";
@@ -20,7 +48,9 @@ export function assertThalamusRouted(spawnContext = {}) {
     packet_id: packetId,
     resolver_key: resolverKey,
     inline_vector_present: Array.isArray(context.inline_vector) && context.inline_vector.length === 512,
-    tensor_bundle_present: Boolean(context.tensor_bundle_id)
+    tensor_bundle_present: Boolean(context.tensor_bundle_id || context["@tb"]),
+    protocol_version: context.protocol_version || null,
+    protocol_ack: context.ack || null
   };
 }
 
@@ -36,6 +66,14 @@ export async function recordThalamusTelemetry(event = {}) {
     resolver_key_present: Boolean(event.resolver_key),
     inline_vector_present: Boolean(event.inline_vector_present),
     tensor_bundle_present: Boolean(event.tensor_bundle_present),
+    protocol_version: event.protocol_version || null,
+    protocol_ack: event.protocol_ack || event.ack || null,
+    spawn_context_tokens: Number(event.spawn_context_tokens || 0),
+    compact_context_tokens: Number(event.compact_context_tokens || 0),
+    token_reduction: Number(event.token_reduction || 0),
+    escalate_status: event.escalate_status || "none",
+    rejection_count: Number(event.rejection_count || 0),
+    escalated_to_mami: Boolean(event.escalated_to_mami),
     error_code: event.error_code || null,
     source: event.source || "thalamus"
   };

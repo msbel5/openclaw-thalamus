@@ -57,6 +57,7 @@ export async function savePacket(packet, options = {}) {
   await ensureDirs();
   const saved = {
     ...packet,
+    protocol_version: packet.protocol_version || null,
     task_hash: packet.task_hash || taskHash(packet.task),
     expires_at:
       packet.promoted || options.promoted
