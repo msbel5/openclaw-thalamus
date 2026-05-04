@@ -13,7 +13,7 @@ def eval_recon(x, recon):
 
 def main():
     import faiss
-    started=time.time(); emb=np.load(CORPUS/'embeddings.npy').astype('float32')
+    started=time.time(); f=CORPUS/'embeddings.npy'; emb=np.memmap(f,dtype='float16',mode='r',shape=(f.stat().st_size//(512*2),512)).astype('float32')
     if emb.ndim!=2 or emb.shape[1]!=512: raise SystemExit('bad embeddings shape')
     emb=l2(emb); rng=np.random.default_rng(42); idx=rng.permutation(len(emb)); hold=emb[idx[:min(1000,len(emb)//5)]]; train=emb[idx[min(1000,len(emb)//5):]]
     attempts=[]
