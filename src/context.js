@@ -56,14 +56,14 @@ export async function retrieveAtoms(task, options = {}) {
 function buildSummary(task, atoms, health) {
   const top = atoms[0];
   const source = top ? `${top.source} atom ${String(top.atom_id || "").slice(0, 8)}` : "no atom match";
-  const hailo = health.status.hailo ? "Hailo-10H online" : "Hailo not healthy";
-  const openclaw = health.status.openclaw ? "OpenClaw gateway online" : "OpenClaw gateway unhealthy";
+  const hailo = health.status?.hailo ? "Hailo-10H online" : "Hailo not healthy";
+  const openclaw = health.status?.openclaw ? "OpenClaw gateway online" : "OpenClaw gateway unhealthy";
   return `${task.slice(0, 160)} | ${source}; ${hailo}; ${openclaw}.`;
 }
 
 function confidenceFromAtoms(atoms, health) {
   const best = atoms[0]?.similarity || 0;
-  const infra = health.status.hailo && health.status.openclaw && health.status.atom_memory ? 0.2 : 0;
+  const infra = health.status?.hailo && health.status?.openclaw && health.status?.atom_memory ? 0.2 : 0;
   return Math.max(0.1, Math.min(0.95, best * 0.75 + infra));
 }
 
@@ -87,26 +87,30 @@ function recommendedNext(task, atoms) {
 }
 
 function proofFrom(health, atomResult, baseline) {
+  const hailo = health.hailo || {};
+  const openclaw = health.openclaw || {};
   return [
     {
       type: "hailo",
       source: "hailortcli scan + fw-control identify",
-      ok: health.status.hailo,
+      ok: Boolean(health.status?.hailo),
       evidence: {
-        architecture: health.hailo.identify.architecture,
-        firmware: health.hailo.identify.firmware,
-        dev_node: health.hailo.dev_node
+        architecture: hailo.identify?.architecture || null,
+        firmware: hailo.identify?.firmware || null,
+        dev_node: hailo.dev_node || null,
+        timeout: Boolean(hailo.timeout)
       }
     },
     {
       type: "openclaw",
       source: "~/.openclaw/openclaw.json + systemd user service",
-      ok: health.status.openclaw,
+      ok: Boolean(health.status?.openclaw),
       evidence: {
-        version: health.openclaw.version,
-        gateway: health.openclaw.gateway.active,
-        agents: health.openclaw.agents.map((a) => a.id),
-        mcp_servers: health.openclaw.mcp_servers
+        version: openclaw.version || null,
+        gateway: openclaw.gateway?.active || null,
+        agents: Array.isArray(openclaw.agents) ? openclaw.agents.map((a) => a.id) : [],
+        mcp_servers: openclaw.mcp_servers || [],
+        timeout: Boolean(openclaw.timeout)
       }
     },
     {

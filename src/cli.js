@@ -13,6 +13,7 @@ import { cleanupPackets } from "./packet_store.js";
 import { resolveRoute, routeTask } from "./router.js";
 import { ensureDirs, writeJson } from "./system.js";
 import { cluster, compare, embed, initNamespaces, search } from "./vector_store.js";
+import { assertThalamusRouted, recordThalamusTelemetry, validateSpawnContextFile } from "./spawn_guard.js";
 
 
 const execFileAsync = promisify(execFile);
@@ -286,6 +287,28 @@ async function main() {
     console.log(JSON.stringify(await cluster({ threshold: Number(argAfter("--threshold", "0.85")) }), null, 2));
     return;
   }
+  if (command === "spawn-guard") {
+    let result;
+    if (argAfter("--file")) {
+      result = await validateSpawnContextFile(argAfter("--file"));
+    } else {
+      const raw = argAfter("--context", "{}");
+      result = assertThalamusRouted(JSON.parse(raw));
+    }
+    await recordThalamusTelemetry({
+      source: "spawn_guard_cli",
+      agent: argAfter("--agent", "captain"),
+      packet_id: result.packet_id,
+      resolver_key: result.resolver_key,
+      thalamus_used: true,
+      vector_query_present: result.inline_vector_present || result.tensor_bundle_present,
+      inline_vector_present: result.inline_vector_present,
+      tensor_bundle_present: result.tensor_bundle_present,
+      packet_count: 1
+    });
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
   if (command === "packet-cleanup") {
     console.log(JSON.stringify(await cleanupPackets(), null, 2));
     return;
@@ -322,6 +345,7 @@ Usage:
   node src/cli.js cluster [--threshold 0.85]
   node src/cli.js context "task summary" [--no-remote] [--top 5] [--budget 4000]
   node src/cli.js benchmark [--run-hailo] [--no-remote]
+  node src/cli.js spawn-guard --context '{"packet_id":"pkt_...","resolver_key":"sha256:..."}'
   node src/cli.js packet-cleanup
   node src/cli.js inventory
   node src/cli.js latest

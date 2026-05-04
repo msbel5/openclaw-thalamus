@@ -10,6 +10,7 @@ import {
 } from "./packet_store.js";
 import { appendJsonl, roughTokenEstimate } from "./system.js";
 import { embed, search } from "./vector_store.js";
+import { recordThalamusTelemetry } from "./spawn_guard.js";
 
 const SIMPLE_RE = /\b(selam|merhaba|ne haber|heartbeat|status|durum|kisa|özet|ozet|ping)\b/i;
 const CODE_RE = /\b(code|kod|plugin|repo|commit|test|build|fix|bug|implement|uygula)\b/i;
@@ -136,6 +137,16 @@ export async function routeTask(input = {}) {
   if (!task) return { ok: false, error: "thalamus_route requires task" };
   const cachedPacket = await findCachedPacket(task);
   if (cachedPacket && !input.noCache) {
+    await recordThalamusTelemetry({
+      source: "thalamus_route_cached",
+      agent: input.agent || "captain",
+      packet_id: cachedPacket.packet_id,
+      resolver_key: cachedPacket.resolver_key,
+      thalamus_used: true,
+      vector_query_present: Boolean(cachedPacket.vector_query),
+      inline_vector_present: Boolean(cachedPacket.vector_query?.normalized_512),
+      packet_count: 1
+    });
     return {
       ok: true,
       cached: true,
@@ -250,6 +261,17 @@ export async function routeTask(input = {}) {
     ]
   });
   packet.token_estimate.packet_tokens = roughTokenEstimate(packet);
+  await recordThalamusTelemetry({
+    source: "thalamus_route_new",
+    agent: input.agent || "captain",
+    run_id: input.run_id || packet.packet_id,
+    packet_id: packet.packet_id,
+    resolver_key: packet.resolver_key,
+    thalamus_used: true,
+    vector_query_present: Boolean(packet.vector_query),
+    inline_vector_present: Boolean(query?.normalized_512),
+    packet_count: 1
+  });
   await appendJsonl(path.join(path.dirname(AOT_EVENTS_PATH), "route_events.jsonl"), {
     ts: packet.generated_at,
     tool: "thalamus_route",

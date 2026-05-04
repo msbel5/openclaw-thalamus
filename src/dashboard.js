@@ -11,6 +11,7 @@ import { resolvePacket } from "./packet_store.js";
 import { ensureDirs, redact } from "./system.js";
 import { search as vectorSearch } from "./vector_store.js";
 import { loadTensorBundle, saveTensorBundle } from "./tensor_bundle.js";
+import { readLastTelemetry } from "./spawn_guard.js";
 import crypto from "node:crypto";
 
 // PRD-F: optional HMAC-style bearer auth. If THALAMUS_API_KEY env var is unset,
@@ -351,6 +352,10 @@ async function handle(req, res) {
         const out = await vectorSearch({ ...body, vector, text: undefined, vector_id: undefined });
         await sendJson(res, out);
       } catch (err) { await sendJson(res, { ok: false, error: redact(err.message || String(err)) }); }
+      return;
+    }
+    if (url.pathname === "/api/telemetry/last") {
+      await sendJson(res, await readLastTelemetry(Number(url.searchParams.get("n") || 10)));
       return;
     }
     if (url.pathname === "/api/tensor-bundle") {
