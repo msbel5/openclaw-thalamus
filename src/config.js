@@ -13,6 +13,8 @@ export const PACKET_DIR = path.join(STATE_DIR, "packets");
 export const VECTOR_STORE_DIR = path.join(STATE_DIR, "vectors");
 export const VECTOR_CACHE_DIR = path.join(THALAMUS_HOME, ".cache", "normalizers");
 export const AOT_EVENTS_PATH = path.join(STATE_DIR, "aot-events.jsonl");
+export const TENSOR_BUNDLE_DIR = path.join(STATE_DIR, "tensor_bundles");
+export const CONCEPT_CODES_ENABLED = process.env.THALAMUS_CONCEPT_CODES === "1";
 
 export const OPENCLAW_JSON = path.join(HOME, ".openclaw", "openclaw.json");
 export const OPENCLAW_BIN = path.join(HOME, ".npm-global", "bin", "openclaw");

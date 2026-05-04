@@ -1,0 +1,10 @@
+[Unit]
+Description=Weekly Thalamus tensor bundle cleanup
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+Unit=thalamus-tensor-bundle-cleanup.service
+
+[Install]
+WantedBy=timers.target

@@ -10,6 +10,7 @@ import { runLocalInference } from "./local_llm.js";
 import { resolvePacket } from "./packet_store.js";
 import { ensureDirs, redact } from "./system.js";
 import { search as vectorSearch } from "./vector_store.js";
+import { loadTensorBundle, saveTensorBundle } from "./tensor_bundle.js";
 import crypto from "node:crypto";
 
 // PRD-F: optional HMAC-style bearer auth. If THALAMUS_API_KEY env var is unset,
@@ -331,11 +332,36 @@ async function handle(req, res) {
         return;
       }
       try {
-        const out = await resolvePacket(packetId, resolverKey || null);
+        const out = await resolvePacket(packetId, resolverKey || null, {
+          with_text: url.searchParams.get("with_text") !== "false",
+          with_vectors: url.searchParams.get("with_vectors") !== "false",
+          max_atoms: Number(url.searchParams.get("max_atoms") || 0) || undefined
+        });
         await sendJson(res, out);
       } catch (err) {
         await sendJson(res, { ok: false, error: redact(err.message || String(err)) });
       }
+      return;
+    }
+    if (url.pathname === "/api/search/vector") {
+      if (req.method !== "POST") { await sendJson(res, { ok: false, error: "POST required" }); return; }
+      try {
+        const body = await readJsonBody(req, 2_000_000);
+        const vector = body.tensor_bundle_id ? (await loadTensorBundle(body.tensor_bundle_id)).vector : body.vector;
+        const out = await vectorSearch({ ...body, vector, text: undefined, vector_id: undefined });
+        await sendJson(res, out);
+      } catch (err) { await sendJson(res, { ok: false, error: redact(err.message || String(err)) }); }
+      return;
+    }
+    if (url.pathname === "/api/tensor-bundle") {
+      if (req.method === "POST") {
+        try { await sendJson(res, await saveTensorBundle(await readJsonBody(req, 2_000_000))); }
+        catch (err) { await sendJson(res, { ok: false, error: redact(err.message || String(err)) }); }
+        return;
+      }
+      const id = url.searchParams.get("id");
+      try { await sendJson(res, await loadTensorBundle(id)); }
+      catch (err) { await sendJson(res, { ok: false, error: redact(err.message || String(err)) }); }
       return;
     }
     if (url.pathname === "/api/search") {

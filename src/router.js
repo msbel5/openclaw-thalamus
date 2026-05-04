@@ -255,6 +255,10 @@ export async function routeTask(input = {}) {
     tool: "thalamus_route",
     packet_id: packet.packet_id,
     resolver_key: packet.resolver_key,
+    inline_vector: query?.normalized_512,
+    inline_vector_dim: 512,
+    inline_vector_namespace: query?.namespace,
+    inline_vector_model: query?.model,
     intent,
     target: route.target,
     confidence,
@@ -267,6 +271,10 @@ export async function routeTask(input = {}) {
     thalamus_resolver_key: packet.resolver_key,
     packet_id: packet.packet_id,
     resolver_key: packet.resolver_key,
+    inline_vector: query?.normalized_512,
+    inline_vector_dim: 512,
+    inline_vector_namespace: query?.namespace,
+    inline_vector_model: query?.model,
     confidence,
     escalation_reason: route.escalation_reason,
     route,
@@ -275,5 +283,5 @@ export async function routeTask(input = {}) {
 }
 
 export async function resolveRoute(input = {}) {
-  return resolvePacket(input.packet_id || input.thalamus_packet_id, input.resolver_key || input.thalamus_resolver_key);
+  return resolvePacket(input.packet_id || input.thalamus_packet_id, input.resolver_key || input.thalamus_resolver_key, input);
 }

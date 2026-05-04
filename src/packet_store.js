@@ -78,7 +78,30 @@ export async function savePacket(packet, options = {}) {
   return saved;
 }
 
-export async function resolvePacket(packetId, resolverKey) {
+
+function stripTextFields(value, opts = {}) {
+  if (Array.isArray(value)) return value.slice(0, opts.maxAtoms || value.length).map((item) => stripTextFields(item, opts));
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [key, val] of Object.entries(value)) {
+      if (opts.with_text === false && ["text", "task", "summary", "message", "prompt", "stdout", "stderr", "content"].includes(key)) continue;
+      if (opts.with_vectors === false && ["vector", "normalized_512", "inline_vector"].includes(key)) continue;
+      out[key] = stripTextFields(val, opts);
+    }
+    return out;
+  }
+  return value;
+}
+
+function lightPacket(packet, options = {}) {
+  return stripTextFields(packet, {
+    with_text: options.with_text !== false,
+    with_vectors: options.with_vectors !== false,
+    maxAtoms: Number(options.max_atoms || options.maxAtoms || 0) || undefined,
+  });
+}
+
+export async function resolvePacket(packetId, resolverKey, options = {}) {
   if (!/^(pkt_|thalamus-)[A-Za-z0-9_:-]+$/.test(String(packetId || ""))) {
     return { ok: false, error: "invalid packet_id" };
   }
@@ -89,7 +112,7 @@ export async function resolvePacket(packetId, resolverKey) {
   if (resolverKey && packet.resolver_key !== resolverKey) {
     return { ok: false, error: "resolver_key mismatch", packet_id: packetId };
   }
-  return { ok: true, packet_id: packetId, resolver_key: packet.resolver_key, packet };
+  return { ok: true, packet_id: packetId, resolver_key: packet.resolver_key, packet: lightPacket(packet, options) };
 }
 
 export async function promotePacket(packetId, resolverKey, metadata = {}) {

@@ -263,6 +263,82 @@ def handle_embed_audio_whisper(params: Dict[str, Any]) -> Dict[str, Any]:
                 "encode_ms": round((time.time() - t0) * 1000, 2)}
 
 
+
+# ---------------------------------------------------------------------------
+# Concept codes (FAISS PQ) — experimental, default OFF.
+# ---------------------------------------------------------------------------
+CODEBOOK_PATH = HOME / ".openclaw" / "thalamus" / "state" / "codebook.faiss"
+CODEBOOK_META_PATH = HOME / ".openclaw" / "thalamus" / "state" / "codebook_metadata.json"
+CONCEPT_TELEMETRY_PATH = HOME / ".openclaw" / "thalamus" / "state" / "concept_route_telemetry.jsonl"
+_CODEBOOK = None
+
+def concept_enabled() -> bool:
+    return os.environ.get("THALAMUS_CONCEPT_CODES") == "1"
+
+def load_codebook():
+    global _CODEBOOK
+    if _CODEBOOK is not None:
+        return _CODEBOOK
+    if not CODEBOOK_PATH.exists():
+        return None
+    import faiss
+    _CODEBOOK = faiss.read_index(str(CODEBOOK_PATH))
+    return _CODEBOOK
+
+def _norm1(vec):
+    arr = np.asarray(vec, dtype=np.float32).reshape(1, -1)
+    n = np.linalg.norm(arr, axis=1, keepdims=True) + 1e-12
+    return arr / n
+
+def _cos(a, b):
+    aa=_norm1(a); bb=_norm1(b)
+    return float((aa*bb).sum())
+
+def _concept_encode_decode(vec):
+    idx = load_codebook()
+    if idx is None:
+        return None, None, None
+    arr = _norm1(vec)
+    codes = idx.sa_encode(arr)
+    recon = idx.sa_decode(codes)
+    return codes[0].astype(np.uint8).tolist(), recon[0].astype(np.float32).tolist(), _cos(arr[0], recon[0])
+
+def handle_concept_encode(params: Dict[str, Any]) -> Dict[str, Any]:
+    if not concept_enabled(): return {"ok": False, "path": "vector", "reason": "disabled"}
+    codes, recon, cos = _concept_encode_decode(params.get("vector") or [])
+    if codes is None: return {"ok": False, "path": "vector", "reason": "no_codebook"}
+    return {"ok": True, "codes": codes, "recon_cos": round(cos, 6), "bytes": len(codes)}
+
+def handle_concept_decode(params: Dict[str, Any]) -> Dict[str, Any]:
+    if not concept_enabled(): return {"ok": False, "path": "vector", "reason": "disabled"}
+    idx=load_codebook()
+    if idx is None: return {"ok": False, "path": "vector", "reason": "no_codebook"}
+    codes=np.asarray([params.get("codes") or []], dtype=np.uint8)
+    recon=idx.sa_decode(codes)[0].astype(np.float32)
+    return {"ok": True, "vector": recon.tolist(), "vector_dim": int(recon.shape[0])}
+
+def handle_concept_route_decision(params: Dict[str, Any]) -> Dict[str, Any]:
+    reason=""; out={"path":"vector"}
+    if not concept_enabled(): reason="disabled"
+    elif not CODEBOOK_PATH.exists(): reason="no_codebook"
+    else:
+        codes, recon, cos = _concept_encode_decode(params.get("vector") or [])
+        meta={}
+        try: meta=json.load(open(CODEBOOK_META_PATH))
+        except Exception: meta={}
+        coverage=float(meta.get("coverage_estimate", 1.0))
+        if cos < 0.90: reason=f"recon_cos={cos:.3f}<0.90"
+        elif coverage < 0.95: reason="low_coverage"
+        else:
+            out={"path":"code", "reason":"ok", "codes":codes, "recon_cos":round(cos,6), "coverage_estimate":coverage}
+            reason=None
+    if reason: out={"path":"vector", "reason":reason}
+    try:
+        CONCEPT_TELEMETRY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with CONCEPT_TELEMETRY_PATH.open('a') as f: f.write(json.dumps({"ts":time.time(), **out})+'\n')
+    except Exception: pass
+    return {"ok": True, **out}
+
 def handle_health(_params: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "ok": True,
@@ -298,6 +374,9 @@ METHODS = {
     "embed_audio_whisper": handle_embed_audio_whisper,
     "health": handle_health,
     "unload": handle_unload,
+    "concept_encode": handle_concept_encode,
+    "concept_decode": handle_concept_decode,
+    "concept_route_decision": handle_concept_route_decision,
 }
 
 

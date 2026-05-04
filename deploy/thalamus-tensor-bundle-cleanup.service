@@ -1,0 +1,6 @@
+[Unit]
+Description=Thalamus tensor bundle cleanup
+
+[Service]
+Type=oneshot
+ExecStart=/home/msbel/projects-alcyone/openclaw-thalamus/scripts/cleanup_tensor_bundles.sh

@@ -565,19 +565,20 @@ function sourceMatches(source, filters = []) {
 }
 
 async function queryVectorForNamespace(input, namespace) {
+  let queryPath = null;
   const info = namespaceInfo(namespace);
-  if (Array.isArray(input.vector)) return input.vector.map(Number);
+  if (Array.isArray(input.vector)) return { vector: input.vector.map(Number), query_path: "vector" };
   if (input.vector_id) {
     for (const ns of Object.keys(VECTOR_NAMESPACES)) {
       const found = (await readNamespace(ns)).find((row) => row.id === input.vector_id);
-      if (found) return found.vector;
+      if (found) return { vector: found.vector, query_path: "vector_id" };
     }
   }
   if (input.text) {
     if (info.side === "crossmodal" || namespace === "atoms.image.raw") {
-      return (await clipText(input.text)).vector;
+      return { vector: (await clipText(input.text)).vector, query_path: "text" };
     }
-    return (await semanticText(input.text)).vector;
+    return { vector: (await semanticText(input.text)).vector, query_path: "text" };
   }
   return null;
 }
@@ -586,7 +587,8 @@ export async function search(input = {}) {
   await ensureDirs();
   const namespace = input.namespace || DEFAULT_TEXT_NAMESPACE;
   const info = namespaceInfo(namespace);
-  const queryVector = await queryVectorForNamespace(input, namespace);
+  const query = await queryVectorForNamespace(input, namespace);
+  const queryVector = query?.vector;
   if (!queryVector) return { ok: false, error: "thalamus_search requires vector, vector_id, or text" };
   const targetQuery = normalizeVectorToDim(queryVector, info.dim, input.source_namespace || "query");
   const rows = await readNamespace(namespace);
@@ -622,6 +624,7 @@ export async function search(input = {}) {
     k,
     threshold,
     source_filter: sourceFilter,
+    query_path: query?.query_path || null,
     count: rows.length,
     matches
   };
