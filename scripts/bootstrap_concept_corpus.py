@@ -110,9 +110,10 @@ def embed_daemon_qwen3(text):
     return np.asarray(out['vector'], dtype=np.float32)
 
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument('--target',type=int,default=MIN_N); ap.add_argument('--limit-local',type=int,default=9000); ap.add_argument('--limit-mteb',type=int,default=18000); ap.add_argument('--resume',action='store_true'); ap.add_argument('--encoder', choices=['distiluse','qwen3'], default='distiluse'); args=ap.parse_args()
+    ap=argparse.ArgumentParser(); ap.add_argument('--target',type=int,default=MIN_N); ap.add_argument('--limit-local',type=int,default=9000); ap.add_argument('--limit-mteb',type=int,default=18000); ap.add_argument('--resume',action='store_true'); ap.add_argument('--encoder', choices=['distiluse','qwen3','qwen3-0.6b'], default='distiluse'); args=ap.parse_args()
     OUT.mkdir(parents=True,exist_ok=True); started=time.time()
-    corpus_file=OUT/'metadata.jsonl'; dim=1024 if args.encoder=='qwen3' else 512; emb_file=OUT/('embeddings_qwen3.npy' if args.encoder=='qwen3' else 'embeddings.npy'); stats_file=OUT/('stats_qwen3.json' if args.encoder=='qwen3' else 'stats.json')
+    encoder = 'qwen3' if args.encoder in ('qwen3','qwen3-0.6b') else 'distiluse'
+    corpus_file=OUT/'metadata.jsonl'; dim=1024 if encoder=='qwen3' else 512; emb_file=OUT/('embeddings_qwen3.npy' if encoder=='qwen3' else 'embeddings.npy'); stats_file=OUT/('stats_qwen3.json' if encoder=='qwen3' else 'stats.json')
     old_items=[]
     old_n=0
     if corpus_file.exists() and emb_file.exists():
@@ -159,12 +160,12 @@ def main():
                 temp=float(raw_temp.split('=')[1].split("'")[0])
             except Exception:
                 temp=0
-            if temp and temp>float(os.environ.get("THALAMUS_MAX_TEMP_C", "90")):
+            if temp and temp>float(os.environ.get("BOOTSTRAP_TEMP_CEILING", os.environ.get("THALAMUS_MAX_TEMP_C", "86"))):
                 print(json.dumps({'cooldown_temp_c':temp,'progress':i,'N':len(items)}),flush=True)
                 time.sleep(60)
                 continue
             break
-        v=embed_daemon(it['text']) if args.encoder=='distiluse' else embed_daemon_qwen3(it['text'])
+        v=embed_daemon(it['text']) if encoder=='distiluse' else embed_daemon_qwen3(it['text'])
         arr[i]=v.astype('float16'); ok+=1
         if i and i%500==0:
             arr.flush(); print(json.dumps({'progress':i,'N':len(items),'elapsed_s':round(time.time()-started,1)}),flush=True)
@@ -180,7 +181,7 @@ def main():
                 print(json.dumps({'cooldown_sleep_s':30,'temp_c':temp,'progress':i,'N':len(items)}),flush=True); time.sleep(30)
     arr.flush(); del arr
     tmp=Path(str(emb_file)+'.tmp'); tmp.rename(emb_file)
-    stats={'ok':True,'N':len(items),'embedded':ok,'encoder':args.encoder,'dim':dim,'embedding_wall_s':round(time.time()-started,2),'embeddings_bytes':emb_file.stat().st_size,'metadata_bytes':corpus_file.stat().st_size,'sources':{}}
+    stats={'ok':True,'N':len(items),'embedded':ok,'encoder':encoder,'dim':dim,'embedding_wall_s':round(time.time()-started,2),'embeddings_bytes':emb_file.stat().st_size,'metadata_bytes':corpus_file.stat().st_size,'sources':{}}
     for it in items: stats['sources'][it['source']]=stats['sources'].get(it['source'],0)+1
     stats_file.write_text(json.dumps(stats,ensure_ascii=False,indent=2)+'\n')
     print(json.dumps(stats,ensure_ascii=False))
