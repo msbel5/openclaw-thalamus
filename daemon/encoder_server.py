@@ -50,6 +50,14 @@ DISTILUSE_MODEL_NAME = "distiluse-base-multilingual-cased-v2"
 CLIP_TEXT_NAME = "hailo-clip-vit-b-32-text"
 CLIP_IMAGE_NAME = "hailo-clip-vit-b-32-image"
 WHISPER_AUDIO_NAME = "hailo-whisper-base-encoder-10s"
+QWEN3_Q4_NAME = "qwen3-embedding-0.6b-q4_0"
+QWEN3_Q4K_NAME = "qwen3-embedding-0.6b-q4_k_m"
+GTE_MODEL_NAME = "Alibaba-NLP/gte-multilingual-base"
+MODEL_DIR = HOME / ".openclaw" / "thalamus" / "models"
+QWEN3_MODELS = {
+    "q4_0": MODEL_DIR / "qwen3-embedding-0.6b-q4_0.gguf",
+    "q4_k_m": MODEL_DIR / "qwen3-embedding-0.6b-q4_k_m.gguf",
+}
 
 
 def log(msg: str) -> None:
@@ -97,6 +105,72 @@ def load_distiluse() -> Dict[str, Any]:
     log(f"loaded {DISTILUSE_MODEL_NAME} in {load_ms:.0f}ms, RSS={get_rss_mb():.0f}MB")
     return LOADED_MODELS[DISTILUSE_MODEL_NAME]
 
+
+
+def _normalize_list(vec):
+    arr = np.asarray(vec, dtype=np.float32).reshape(-1)
+    norm = float(np.linalg.norm(arr))
+    if not np.isfinite(norm) or norm == 0:
+        return arr.tolist()
+    return (arr / norm).astype(np.float32).tolist()
+
+def load_qwen3(variant: str | None = None) -> Dict[str, Any]:
+    variant = (variant or os.environ.get("THALAMUS_QWEN3_VARIANT") or "q4_0").lower()
+    if variant == "q3_k_m":
+        variant = "q4_k_m"
+    model_path = QWEN3_MODELS.get(variant) or QWEN3_MODELS["q4_0"]
+    name = QWEN3_Q4K_NAME if variant == "q4_k_m" else QWEN3_Q4_NAME
+    if name in LOADED_MODELS:
+        return LOADED_MODELS[name]
+    if not model_path.exists():
+        raise FileNotFoundError(f"qwen3 gguf missing: {model_path}")
+    log(f"loading {name} from {model_path}...")
+    t0 = time.time()
+    from llama_cpp import Llama
+    model = Llama(model_path=str(model_path), embedding=True, n_ctx=int(os.environ.get("THALAMUS_QWEN3_N_CTX", "512")), n_threads=int(os.environ.get("THALAMUS_QWEN3_THREADS", "4")), verbose=False)
+    load_ms = (time.time() - t0) * 1000
+    LOADED_MODELS[name] = {"kind": "text-qwen3", "loaded_at": time.time(), "load_ms": load_ms, "dim": 1024, "instance": model, "variant": variant, "path": str(model_path)}
+    log(f"loaded {name} in {load_ms:.0f}ms, RSS={get_rss_mb():.0f}MB")
+    return LOADED_MODELS[name]
+
+def handle_embed_text_qwen3(params: Dict[str, Any]) -> Dict[str, Any]:
+    text = str(params.get("text", "")).strip()
+    if not text:
+        return {"ok": False, "error": "embed_text_qwen3 requires non-empty text"}
+    variant = params.get("variant") or os.environ.get("THALAMUS_QWEN3_VARIANT") or "q4_0"
+    t0 = time.time()
+    try:
+        entry = load_qwen3(str(variant))
+        out = entry["instance"].create_embedding(text)
+        vlist = _normalize_list(out["data"][0]["embedding"])
+        return {"ok": True, "vector_dim": len(vlist), "vector": vlist, "model": QWEN3_Q4K_NAME if entry.get("variant") == "q4_k_m" else QWEN3_Q4_NAME, "variant": entry.get("variant"), "degraded": False, "encode_ms": round((time.time() - t0) * 1000, 2), "rss_mb": round(get_rss_mb(), 1), "source": "encoder-daemon-llama-cpp"}
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "degraded": True, "encode_ms": round((time.time() - t0) * 1000, 2)}
+
+def load_gte() -> Dict[str, Any]:
+    if GTE_MODEL_NAME in LOADED_MODELS:
+        return LOADED_MODELS[GTE_MODEL_NAME]
+    log(f"loading {GTE_MODEL_NAME}...")
+    t0 = time.time()
+    from sentence_transformers import SentenceTransformer
+    model = SentenceTransformer(GTE_MODEL_NAME, trust_remote_code=True)
+    load_ms = (time.time() - t0) * 1000
+    LOADED_MODELS[GTE_MODEL_NAME] = {"kind": "text-gte", "loaded_at": time.time(), "load_ms": load_ms, "dim": 768, "instance": model}
+    log(f"loaded {GTE_MODEL_NAME} in {load_ms:.0f}ms, RSS={get_rss_mb():.0f}MB")
+    return LOADED_MODELS[GTE_MODEL_NAME]
+
+def handle_embed_text_gte(params: Dict[str, Any]) -> Dict[str, Any]:
+    text = str(params.get("text", "")).strip()
+    if not text:
+        return {"ok": False, "error": "embed_text_gte requires non-empty text"}
+    t0 = time.time()
+    try:
+        entry = load_gte()
+        vec = entry["instance"].encode(text, convert_to_numpy=True, normalize_embeddings=True)
+        vlist = np.asarray(vec, dtype=np.float32).reshape(-1).tolist()
+        return {"ok": True, "vector_dim": len(vlist), "vector": vlist, "model": GTE_MODEL_NAME, "degraded": False, "encode_ms": round((time.time()-t0)*1000, 2), "rss_mb": round(get_rss_mb(), 1), "source": "encoder-daemon-sentence-transformers"}
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "degraded": True, "encode_ms": round((time.time()-t0)*1000, 2)}
 
 def handle_embed_text(params: Dict[str, Any]) -> Dict[str, Any]:
     text = str(params.get("text", "")).strip()
@@ -374,6 +448,7 @@ def handle_health(_params: Dict[str, Any]) -> Dict[str, Any]:
             for name, entry in LOADED_MODELS.items()
         ],
         "socket": str(SOCKET_PATH),
+        "qwen3_models": {k: str(v) for k, v in QWEN3_MODELS.items()},
     }
 
 
@@ -388,6 +463,8 @@ def handle_unload(params: Dict[str, Any]) -> Dict[str, Any]:
 
 METHODS = {
     "embed_text": handle_embed_text,
+    "embed_text_qwen3": handle_embed_text_qwen3,
+    "embed_text_gte": handle_embed_text_gte,
     "embed_clip_text": handle_embed_clip_text,
     "embed_clip_image": handle_embed_clip_image,
     "embed_audio_whisper": handle_embed_audio_whisper,
@@ -516,7 +593,8 @@ def main() -> int:
         results = []
         for i, text in enumerate(["BTC fiyatı", "merhaba dünya", "hello world"]):
             t0 = time.time()
-            r = client_call("embed_text", {"text": text}, timeout=120)
+            method = "embed_text_qwen3" if os.environ.get("THALAMUS_BENCH_QWEN3") == "1" else "embed_text"
+            r = client_call(method, {"text": text}, timeout=120)
             wall_ms = (time.time() - t0) * 1000
             results.append({
                 "i": i, "text": text,

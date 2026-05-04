@@ -1,0 +1,4 @@
+sentence-transformers>=5.4.1
+llama-cpp-python>=0.3.16
+huggingface-hub>=1.13.0
+numpy>=2.0
