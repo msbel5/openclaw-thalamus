@@ -1,0 +1,9 @@
+optimizer: GEPA
+seed: 42
+population: 4
+generations: 5
+max_llm_calls: 200
+model_preferred: github-copilot/gpt-5.4
+model_fallback: anthropic/claude-opus-4-7
+eval: gepa/eval_inspector.py
+auto_deploy: false
