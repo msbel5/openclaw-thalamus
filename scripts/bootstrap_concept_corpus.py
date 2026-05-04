@@ -109,8 +109,19 @@ def embed_daemon_qwen3(text):
     if not out.get('ok'): raise RuntimeError(out.get('error'))
     return np.asarray(out['vector'], dtype=np.float32)
 
+
+def read_temp_c():
+    try:
+        raw_temp=subprocess.check_output(['vcgencmd','measure_temp'],text=True)
+        return float(raw_temp.split('=')[1].split("'")[0])
+    except Exception:
+        return 0.0
+
+def thermal_ceiling():
+    return float(os.environ.get("BOOTSTRAP_TEMP_CEILING", os.environ.get("THALAMUS_MAX_TEMP_C", "86")))
+
 def main():
-    ap=argparse.ArgumentParser(); ap.add_argument('--target',type=int,default=MIN_N); ap.add_argument('--limit-local',type=int,default=9000); ap.add_argument('--limit-mteb',type=int,default=18000); ap.add_argument('--resume',action='store_true'); ap.add_argument('--encoder', choices=['distiluse','qwen3','qwen3-0.6b'], default='distiluse'); args=ap.parse_args()
+    ap=argparse.ArgumentParser(); ap.add_argument('--target',type=int,default=MIN_N); ap.add_argument('--limit-local',type=int,default=9000); ap.add_argument('--limit-mteb',type=int,default=18000); ap.add_argument('--resume',action='store_true'); ap.add_argument('--encoder', choices=['distiluse','qwen3','qwen3-0.6b'], default='distiluse'); ap.add_argument('--batch', type=int, default=int(os.environ.get('THALAMUS_CORPUS_BATCH','1'))); args=ap.parse_args()
     OUT.mkdir(parents=True,exist_ok=True); started=time.time()
     encoder = 'qwen3' if args.encoder in ('qwen3','qwen3-0.6b') else 'distiluse'
     corpus_file=OUT/'metadata.jsonl'; dim=1024 if encoder=='qwen3' else 512; emb_file=OUT/('embeddings_qwen3.npy' if encoder=='qwen3' else 'embeddings.npy'); stats_file=OUT/('stats_qwen3.json' if encoder=='qwen3' else 'stats.json')
@@ -151,30 +162,31 @@ def main():
         arr.flush()
     done=int(((arr!=0).any(axis=1)).sum()) if (mode=='r+' or old_n) else 0
     ok=done
-    for i,it in enumerate(items):
-        if i < done:
-            continue
+    i = done
+    batch_size = max(1, int(args.batch))
+    while i < len(items):
         while True:
-            try:
-                raw_temp=subprocess.check_output(['vcgencmd','measure_temp'],text=True)
-                temp=float(raw_temp.split('=')[1].split("'")[0])
-            except Exception:
-                temp=0
-            if temp and temp>float(os.environ.get("BOOTSTRAP_TEMP_CEILING", os.environ.get("THALAMUS_MAX_TEMP_C", "86"))):
+            temp = read_temp_c()
+            if temp and temp > thermal_ceiling():
                 print(json.dumps({'cooldown_temp_c':temp,'progress':i,'N':len(items)}),flush=True)
                 time.sleep(60)
                 continue
             break
-        v=embed_daemon(it['text']) if encoder=='distiluse' else embed_daemon_qwen3(it['text'])
-        arr[i]=v.astype('float16'); ok+=1
-        if i and i%500==0:
-            arr.flush(); print(json.dumps({'progress':i,'N':len(items),'elapsed_s':round(time.time()-started,1)}),flush=True)
+        for row_in_batch in range(batch_size):
+            if i >= len(items):
+                break
+            it = items[i]
+            v=embed_daemon(it['text']) if encoder=='distiluse' else embed_daemon_qwen3(it['text'])
+            arr[i]=v.astype('float16'); ok+=1; i+=1
+            if i and i%500==0:
+                arr.flush(); print(json.dumps({'progress':i,'N':len(items),'elapsed_s':round(time.time()-started,1),'batch_size':batch_size}),flush=True)
+            if (row_in_batch + 1) % 3 == 0:
+                temp = read_temp_c()
+                if temp and temp > 87:
+                    print(json.dumps({'batch_aborted_temp_c':temp,'progress':i,'N':len(items)}),flush=True)
+                    break
         if i and i%1000==0:
-            try:
-                raw_temp=subprocess.check_output(['vcgencmd','measure_temp'],text=True)
-                temp=float(raw_temp.split('=')[1].split("'")[0])
-            except Exception:
-                temp=0
+            temp = read_temp_c()
             if temp and temp>85:
                 print(json.dumps({'thermal_sleep_s':60,'temp_c':temp,'progress':i,'N':len(items)}),flush=True); time.sleep(60)
             else:
