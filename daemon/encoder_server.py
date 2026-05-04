@@ -269,8 +269,10 @@ def handle_embed_audio_whisper(params: Dict[str, Any]) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 CODEBOOK_PATH = HOME / ".openclaw" / "thalamus" / "state" / "codebook.faiss"
 CODEBOOK_META_PATH = HOME / ".openclaw" / "thalamus" / "state" / "codebook_metadata.json"
+OPQ_ROTATION_PATH = HOME / ".openclaw" / "thalamus" / "state" / "opq_rotation.npy"
 CONCEPT_TELEMETRY_PATH = HOME / ".openclaw" / "thalamus" / "state" / "concept_route_telemetry.jsonl"
 _CODEBOOK = None
+_OPQ_ROTATION = None
 
 def concept_enabled() -> bool:
     return os.environ.get("THALAMUS_CONCEPT_CODES") == "1"
@@ -284,6 +286,15 @@ def load_codebook():
     import faiss
     _CODEBOOK = faiss.read_index(str(CODEBOOK_PATH))
     return _CODEBOOK
+
+def load_opq_rotation():
+    global _OPQ_ROTATION
+    if _OPQ_ROTATION is not None:
+        return _OPQ_ROTATION
+    if not OPQ_ROTATION_PATH.exists():
+        return None
+    _OPQ_ROTATION = np.load(OPQ_ROTATION_PATH).astype(np.float32)
+    return _OPQ_ROTATION
 
 def _norm1(vec):
     arr = np.asarray(vec, dtype=np.float32).reshape(1, -1)
@@ -299,8 +310,12 @@ def _concept_encode_decode(vec):
     if idx is None:
         return None, None, None
     arr = _norm1(vec)
-    codes = idx.sa_encode(arr)
+    opq = load_opq_rotation()
+    encoded_arr = arr @ opq.T if opq is not None else arr
+    codes = idx.sa_encode(encoded_arr.astype(np.float32))
     recon = idx.sa_decode(codes)
+    if opq is not None:
+        recon = recon @ opq
     return codes[0].astype(np.uint8).tolist(), recon[0].astype(np.float32).tolist(), _cos(arr[0], recon[0])
 
 def handle_concept_encode(params: Dict[str, Any]) -> Dict[str, Any]:
@@ -314,7 +329,11 @@ def handle_concept_decode(params: Dict[str, Any]) -> Dict[str, Any]:
     idx=load_codebook()
     if idx is None: return {"ok": False, "path": "vector", "reason": "no_codebook"}
     codes=np.asarray([params.get("codes") or []], dtype=np.uint8)
-    recon=idx.sa_decode(codes)[0].astype(np.float32)
+    recon=idx.sa_decode(codes)
+    opq = load_opq_rotation()
+    if opq is not None:
+        recon = recon @ opq
+    recon=recon[0].astype(np.float32)
     return {"ok": True, "vector": recon.tolist(), "vector_dim": int(recon.shape[0])}
 
 def handle_concept_route_decision(params: Dict[str, Any]) -> Dict[str, Any]:

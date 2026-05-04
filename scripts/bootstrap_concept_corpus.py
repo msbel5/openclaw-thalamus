@@ -100,9 +100,27 @@ def main():
     ap=argparse.ArgumentParser(); ap.add_argument('--target',type=int,default=MIN_N); ap.add_argument('--limit-local',type=int,default=9000); ap.add_argument('--limit-mteb',type=int,default=18000); ap.add_argument('--resume',action='store_true'); args=ap.parse_args()
     OUT.mkdir(parents=True,exist_ok=True); started=time.time()
     corpus_file=OUT/'metadata.jsonl'; emb_file=OUT/'embeddings.npy'; stats_file=OUT/'stats.json'
-    if args.resume and corpus_file.exists() and emb_file.exists():
-        arr=np.load(emb_file,mmap_mode='r'); print(json.dumps({'ok':True,'resumed':True,'N':int(arr.shape[0]),'embeddings':str(emb_file)})); return
-    items=dedupe(collect_local(args.limit_local)+collect_mteb(args.limit_mteb))
+    old_items=[]
+    old_n=0
+    if corpus_file.exists() and emb_file.exists():
+        old_n = emb_file.stat().st_size // (512 * 2)
+        for line in corpus_file.read_text(errors='ignore').splitlines():
+            try:
+                rec=json.loads(line)
+                if rec.get('text'): old_items.append(rec)
+            except Exception:
+                pass
+        old_items=old_items[:old_n]
+    if args.resume and old_n >= args.target:
+        print(json.dumps({'ok':True,'resumed':True,'N':old_n,'embeddings':str(emb_file)})); return
+    fresh=dedupe(collect_local(args.limit_local)+collect_mteb(args.limit_mteb))
+    seen={x['text'].lower()[:240] for x in old_items}
+    items=list(old_items)
+    for it in fresh:
+        key=it['text'].lower()[:240]
+        if key not in seen:
+            items.append(it); seen.add(key)
+        if len(items)>=args.target: break
     fill_templates(items,args.target); items=dedupe(items)[:max(args.target,len(items))]
     if len(items)<args.target: fill_templates(items,args.target)
     items=items[:args.target]
@@ -113,7 +131,11 @@ def main():
     tmp=Path(str(emb_file)+'.tmp')
     mode='r+' if tmp.exists() and tmp.stat().st_size==len(items)*512*2 else 'w+'
     arr=np.memmap(tmp, dtype='float16', mode=mode, shape=(len(items),512))
-    done=int(((arr!=0).any(axis=1)).sum()) if mode=='r+' else 0
+    if mode == 'w+' and emb_file.exists() and old_n:
+        old_arr=np.memmap(emb_file, dtype='float16', mode='r', shape=(old_n,512))
+        arr[:old_n]=old_arr[:]
+        arr.flush()
+    done=int(((arr!=0).any(axis=1)).sum()) if (mode=='r+' or old_n) else 0
     ok=done
     for i,it in enumerate(items):
         if i < done:
@@ -133,6 +155,16 @@ def main():
         arr[i]=v.astype('float16'); ok+=1
         if i and i%500==0:
             arr.flush(); print(json.dumps({'progress':i,'N':len(items),'elapsed_s':round(time.time()-started,1)}),flush=True)
+        if i and i%1000==0:
+            try:
+                raw_temp=subprocess.check_output(['vcgencmd','measure_temp'],text=True)
+                temp=float(raw_temp.split('=')[1].split("'")[0])
+            except Exception:
+                temp=0
+            if temp and temp>85:
+                print(json.dumps({'thermal_sleep_s':60,'temp_c':temp,'progress':i,'N':len(items)}),flush=True); time.sleep(60)
+            else:
+                print(json.dumps({'cooldown_sleep_s':30,'temp_c':temp,'progress':i,'N':len(items)}),flush=True); time.sleep(30)
     arr.flush(); del arr
     tmp=Path(str(emb_file)+'.tmp'); tmp.rename(emb_file)
     stats={'ok':True,'N':len(items),'embedded':ok,'embedding_wall_s':round(time.time()-started,2),'embeddings_bytes':emb_file.stat().st_size,'metadata_bytes':corpus_file.stat().st_size,'sources':{}}
