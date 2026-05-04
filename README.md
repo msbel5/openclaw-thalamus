@@ -1,44 +1,51 @@
-# openclaw-thalamus v0.1
+# openclaw-thalamus
 
-Thalamus v0.1 is a conservative router and observability layer for Alcyone.
-It does not claim to replace frontier coding models. It gives OpenClaw agents a
-small proof-backed context packet built from local state, SGA atom memory, and
-Hailo health.
+Thalamus is a cognitive hub for OpenClaw agents. It provides packet-based handoff, vector memory search, source-attributed multimodal ingest, routing telemetry, and a local encoder daemon. It is designed for Alcyone on Raspberry Pi 5, but most Node.js APIs run anywhere with optional Python/Hailo features disabled.
 
-## What ships in v0.1
+## Features
 
-- `thalamus_health`: Hailo, OpenClaw, disk, services, and atom memory status.
-- `thalamus_context`: task -> small context packet with atom IDs and proof.
-- `thalamus_benchmark`: Hailo benchmark and context-packet measurements.
-- Local dashboard on `127.0.0.1:18888`.
-- MCP server for OpenClaw or any MCP-aware client.
+- Packet handoff: `{packet_id, resolver_key}` remains backward compatible.
+- Inline vector handoff and tensor bundles for low-token agent delegation.
+- Vector store namespaces for code, audit, plan, memory, audio, image, and crossmodal recall.
+- Encoder daemon over UNIX socket with distiluse legacy and Qwen3 GGUF support.
+- Dashboard and MCP tools for health, context, route, search, ingest, resolve, and telemetry.
+- Alcyone Protocol internal symbolic compression for agent-to-agent contexts.
 
-## Non-goals
-
-- No GPT-5.5 replacement claim.
-- No OpenClaw crew/auth/heartbeat rewrites.
-- No cron or dream loop activation until benchmark evidence exists.
-- No Hailo GenAI apt install until package conflicts are verified by dry-run.
-
-## Local commands
+## Install
 
 ```bash
-node src/cli.js health
-node src/cli.js context "Build Sprint 5 magic system"
-node src/cli.js benchmark --run-hailo
-node src/dashboard.js
-node src/server.js
+npm install -g openclaw-thalamus
+openclaw-thalamus health
 ```
 
-## MCP tools
+For the full Pi deployment, run from the repo with the Hailo apps Python venv:
 
-The MCP server exposes:
+```bash
+export THALAMUS_HOME=${THALAMUS_HOME:-$HOME/.openclaw/thalamus}
+export THALAMUS_ENCODER_SOCKET=$THALAMUS_HOME/ipc.sock
+node src/cli.js health
+```
 
-- `thalamus_health`
-- `thalamus_context`
-- `thalamus_benchmark`
+Optional Python dependencies live in `daemon/requirements.txt`. Hailo HEF encoders require the Hailo runtime and model files; if unavailable, Thalamus reports degraded encoder status instead of pretending success.
 
-The tool output is JSON text with no secrets. Packets include `packet_id`,
-`summary`, `atoms`, `confidence`, `recommended_next`, `token_estimate`, and
-`proof`.
+## Configuration
 
+- `THALAMUS_HOME`: state root, default `~/.openclaw/thalamus` on Alcyone.
+- `THALAMUS_ENCODER_SOCKET`: encoder daemon UNIX socket.
+- `THALAMUS_TEXT_ENCODER`: set `distiluse` to force legacy 512d text; default uses Qwen3 when daemon supports it.
+- `THALAMUS_API_KEY`: dashboard Bearer/HMAC key.
+- `THALAMUS_CONCEPT_CODES`: enable experimental concept-code path only after codebook gates pass.
+
+## Commands
+
+```bash
+openclaw-thalamus health
+openclaw-thalamus route "plan a small safe code change"
+openclaw-thalamus resolve --packet pkt_... --key sha256:...
+openclaw-thalamus search "prior audit pattern" --namespace atoms.audit
+openclaw-thalamus heartbeat-canary
+```
+
+## Production notes
+
+Thalamus does not feed raw vectors directly into commercial LLM hidden states. It uses vectors for retrieval, routing, compression, and packet handoff, then supplies minimal text evidence to token-based models. Concept codes are experimental and must remain behind `THALAMUS_CONCEPT_CODES=1` unless reconstruction/recall gates pass.

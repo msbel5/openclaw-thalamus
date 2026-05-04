@@ -1,26 +1,47 @@
 {
   "name": "openclaw-thalamus",
-  "version": "0.2.0",
-  "description": "Vector-aware Thalamus router for Alcyone: packet resolver, atom memory, multimodal vectors, Hailo local inference, and MCP tools.",
+  "version": "1.0.0-rc1",
+  "description": "Thalamus cognitive hub for OpenClaw: packet handoff, vector memory, routing telemetry, encoder daemon, and multimodal ingest.",
   "type": "module",
-  "private": true,
+  "private": false,
   "bin": {
+    "openclaw-thalamus": "./src/cli.js",
     "openclaw-thalamus-mcp": "./src/server.js",
-    "openclaw-thalamus-dashboard": "./src/dashboard.js",
-    "openclaw-thalamus": "./src/cli.js"
+    "openclaw-thalamus-dashboard": "./src/dashboard.js"
   },
   "scripts": {
     "health": "node src/cli.js health",
     "context": "node src/cli.js context",
     "benchmark": "node src/cli.js benchmark",
     "dashboard": "node src/dashboard.js",
-    "mcp": "node src/server.js"
+    "mcp": "node src/server.js",
+    "test": "node --check src/cli.js && node --check src/server.js && node --check src/dashboard.js",
+    "pack:check": "npm pack --dry-run --json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.21.0"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/msbel5/openclaw-thalamus.git"
+  },
+  "homepage": "https://github.com/msbel5/openclaw-thalamus#readme",
+  "bugs": {
+    "url": "https://github.com/msbel5/openclaw-thalamus/issues"
+  },
+  "files": [
+    "src",
+    "daemon",
+    "scripts",
+    "thalamus",
+    "gepa",
+    "docs",
+    "README.md",
+    "LICENSE",
+    "package.json"
+  ]
 }
