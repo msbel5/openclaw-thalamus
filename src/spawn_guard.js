@@ -11,8 +11,8 @@ export function protocolAck() {
 }
 
 export function compactSpawnContext(context = {}) {
-  const packetId = context.packet_id || context.thalamus_packet_id;
-  const resolverKey = context.resolver_key || context.thalamus_resolver_key;
+  const packetId = context.packet_id || context.thalamus_packet_id || context["@p"];
+  const resolverKey = context.resolver_key || context.thalamus_resolver_key || context["@r"];
   const compact = {
     protocol_version: ALCYONE_PROTOCOL_VERSION,
     ack: protocolAck(),
@@ -49,12 +49,27 @@ export function assertThalamusRouted(spawnContext = {}) {
     resolver_key: resolverKey,
     inline_vector_present: Array.isArray(context.inline_vector) && context.inline_vector.length === 512,
     tensor_bundle_present: Boolean(context.tensor_bundle_id || context["@tb"]),
-    protocol_version: context.protocol_version || null,
-    protocol_ack: context.ack || null
+    protocol_version: context.protocol_version || ALCYONE_PROTOCOL_VERSION,
+    protocol_ack: context.ack || protocolAck()
   };
 }
 
 export async function recordThalamusTelemetry(event = {}) {
+  const tokenContext = event.spawn_context || event.context || {
+    agent: event.agent || "captain",
+    packet_id: event.packet_id || null,
+    resolver_key: event.resolver_key || null,
+    inline_vector_present: Boolean(event.inline_vector_present),
+    tensor_bundle_present: Boolean(event.tensor_bundle_present),
+    vector_query_present: Boolean(event.vector_query_present),
+    source: event.source || "thalamus"
+  };
+  const compact = compactSpawnContext(tokenContext);
+  const spawnContextTokens = Number(event.spawn_context_tokens || compact.baseline_tokens || 0);
+  const compactContextTokens = Number(event.compact_context_tokens || compact.compact_tokens || 0);
+  const tokenReduction = Number(
+    event.token_reduction ?? (spawnContextTokens ? 1 - compactContextTokens / spawnContextTokens : 0)
+  );
   const row = {
     ts: new Date().toISOString(),
     run_id: event.run_id || event.runId || event.packet_id || null,
@@ -66,11 +81,11 @@ export async function recordThalamusTelemetry(event = {}) {
     resolver_key_present: Boolean(event.resolver_key),
     inline_vector_present: Boolean(event.inline_vector_present),
     tensor_bundle_present: Boolean(event.tensor_bundle_present),
-    protocol_version: event.protocol_version || null,
-    protocol_ack: event.protocol_ack || event.ack || null,
-    spawn_context_tokens: Number(event.spawn_context_tokens || 0),
-    compact_context_tokens: Number(event.compact_context_tokens || 0),
-    token_reduction: Number(event.token_reduction || 0),
+    protocol_version: event.protocol_version || ALCYONE_PROTOCOL_VERSION,
+    protocol_ack: event.protocol_ack || event.ack || protocolAck(),
+    spawn_context_tokens: spawnContextTokens,
+    compact_context_tokens: compactContextTokens,
+    token_reduction: tokenReduction,
     escalate_status: event.escalate_status || "none",
     rejection_count: Number(event.rejection_count || 0),
     escalated_to_mami: Boolean(event.escalated_to_mami),
