@@ -1,6 +1,6 @@
 {
   "name": "openclaw-thalamus",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Thalamus cognitive hub for OpenClaw: packet handoff, vector memory, routing telemetry, encoder daemon, and multimodal ingest.",
   "type": "module",
   "private": false,
